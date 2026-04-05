@@ -211,6 +211,14 @@ app.post("/", async (c) => {
   const isPro = userRecord?.plan === "pro" || userRecord?.plan === "team";
   const useOllama = !isPro && !!process.env.OLLAMA_API_KEY;
 
+  // Image attachments require vision model (Claude only) — warn free users
+  if (useOllama && attachment?.type === "image") {
+    return c.json({
+      error: "Image analysis requires Pro plan",
+      hint: "Upgrade to Pro for image understanding powered by Claude",
+    }, 403);
+  }
+
   return streamText(c, async (stream) => {
     try {
       let fullResponse: string;
@@ -247,6 +255,10 @@ app.post("/", async (c) => {
         });
       } else {
         // Pro/Team tier: Claude (or fallback if no Ollama key)
+        if (!process.env.ANTHROPIC_API_KEY) {
+          await stream.write("Service temporarily unavailable. Please try again later.");
+          return;
+        }
         const client = getClient();
         const model = isPro
           ? (process.env.CLAUDE_MODEL_PRO || "claude-sonnet-4-6")

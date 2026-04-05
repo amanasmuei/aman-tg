@@ -188,7 +188,9 @@ export function ChatView({ agent, onBack, conversationId }: Props) {
         try {
           const errData = await res.json();
           if (res.status === 403) {
-            errorContent = `⭐ ${agent.name} ${t("premiumAgent")}`;
+            errorContent = errData.error?.includes("Image")
+              ? `📷 ${errData.error}. ${errData.hint || ""}`
+              : `⭐ ${agent.name} ${t("premiumAgent")}`;
           } else if (res.status === 429) {
             errorContent = `${t("dailyLimit")} ${errData.limit} ${t("upgradeForUnlimited")}`;
           }

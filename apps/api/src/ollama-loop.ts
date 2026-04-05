@@ -59,24 +59,39 @@ export async function runOllamaAgentLoop(opts: OllamaAgentOptions): Promise<stri
   let toolTurns = 0;
 
   while (toolTurns < MAX_TOOL_TURNS) {
-    const res = await fetch(`${OLLAMA_BASE_URL}/chat`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "Authorization": `Bearer ${apiKey}`,
-      },
-      body: JSON.stringify({
-        model,
-        messages,
-        tools: OLLAMA_TOOLS,
-        stream: true,
-        options: {
-          num_predict: maxTokens,
+    // 60s timeout to prevent hanging if Ollama cloud is down
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 60_000);
+
+    let res: Response;
+    try {
+      res = await fetch(`${OLLAMA_BASE_URL}/chat`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${apiKey}`,
         },
-      }),
-    });
+        body: JSON.stringify({
+          model,
+          messages,
+          tools: OLLAMA_TOOLS,
+          stream: true,
+          options: {
+            num_predict: maxTokens,
+          },
+        }),
+        signal: controller.signal,
+      });
+    } catch (err) {
+      clearTimeout(timeout);
+      if (err instanceof Error && err.name === "AbortError") {
+        throw new Error("Ollama API timed out (60s)");
+      }
+      throw err;
+    }
 
     if (!res.ok) {
+      clearTimeout(timeout);
       const errText = await res.text().catch(() => "Unknown error");
       throw new Error(`Ollama API error ${res.status}: ${errText}`);
     }
@@ -142,6 +157,8 @@ export async function runOllamaAgentLoop(opts: OllamaAgentOptions): Promise<stri
       }
     }
 
+    clearTimeout(timeout);
+
     // No tool calls — we're done
     if (toolCalls.length === 0) {
       break;
@@ -161,7 +178,14 @@ export async function runOllamaAgentLoop(opts: OllamaAgentOptions): Promise<stri
     for (const call of toolCalls) {
       onToolUse?.(call.function.name);
 
-      const result = await executeTool(call.function.name, call.function.arguments);
+      // Defensive: arguments might be a JSON string or an object
+      let args = call.function.arguments;
+      if (typeof args === "string") {
+        try { args = JSON.parse(args); }
+        catch { args = {}; }
+      }
+
+      const result = await executeTool(call.function.name, args as Record<string, unknown>);
       messages.push({
         role: "tool",
         content: result.is_error ? `Error: ${result.content}` : result.content,
