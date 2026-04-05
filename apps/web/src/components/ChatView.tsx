@@ -1,6 +1,14 @@
 import { useState, useRef, useEffect } from "react";
 import type { Agent, ChatMessage } from "@aman-tg/shared";
 
+interface Attachment {
+  type: "image" | "file";
+  name: string;
+  base64: string;
+  mediaType: string;
+  preview?: string; // data URL for image preview
+}
+
 interface Props {
   agent: Agent;
   onBack: () => void;
@@ -10,8 +18,10 @@ export function ChatView({ agent, onBack }: Props) {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
+  const [attachment, setAttachment] = useState<Attachment | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -30,47 +40,100 @@ export function ChatView({ agent, onBack }: Props) {
           setMessages(data.messages);
         }
       })
-      .catch(() => {
-        // Silently fail — start fresh if history unavailable
-      });
+      .catch(() => {});
   }, [agent.id]);
+
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Max 10MB
+    if (file.size > 10 * 1024 * 1024) {
+      alert("File too large. Maximum 10MB.");
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = () => {
+      const result = reader.result as string;
+      // result is "data:<mediaType>;base64,<data>"
+      const base64 = result.split(",")[1];
+      const mediaType = file.type || "application/octet-stream";
+
+      const isImage = mediaType.startsWith("image/");
+
+      setAttachment({
+        type: isImage ? "image" : "file",
+        name: file.name,
+        base64,
+        mediaType,
+        preview: isImage ? result : undefined,
+      });
+    };
+    reader.readAsDataURL(file);
+
+    // Reset file input so same file can be selected again
+    e.target.value = "";
+  };
+
+  const removeAttachment = () => {
+    setAttachment(null);
+  };
 
   const sendMessage = async () => {
     const text = input.trim();
-    if (!text || loading) return;
+    if ((!text && !attachment) || loading) return;
+
+    const displayContent = attachment
+      ? `${attachment.type === "image" ? "📷" : "📎"} ${attachment.name}${text ? `\n${text}` : ""}`
+      : text;
 
     const userMsg: ChatMessage = {
       id: crypto.randomUUID(),
       role: "user",
-      content: text,
+      content: displayContent,
       timestamp: Date.now(),
       agentId: agent.id,
     };
 
     setMessages((prev) => [...prev, userMsg]);
     setInput("");
+    const currentAttachment = attachment;
+    setAttachment(null);
     setLoading(true);
 
     try {
       const tg = window.Telegram?.WebApp;
       const initData = tg?.initData || "";
+
+      const body: Record<string, unknown> = {
+        agentId: agent.id,
+        message: text || "What's in this image?",
+        telegramId: tg?.initDataUnsafe?.user?.id,
+        firstName: tg?.initDataUnsafe?.user?.first_name,
+        lastName: tg?.initDataUnsafe?.user?.last_name,
+        username: tg?.initDataUnsafe?.user?.username,
+      };
+
+      if (currentAttachment) {
+        body.attachment = {
+          type: currentAttachment.type,
+          name: currentAttachment.name,
+          base64: currentAttachment.base64,
+          mediaType: currentAttachment.mediaType,
+        };
+      }
+
       const res = await fetch("/api/chat", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
           "x-telegram-init-data": initData,
         },
-        body: JSON.stringify({
-          agentId: agent.id,
-          message: text,
-          telegramId: tg?.initDataUnsafe?.user?.id,
-          firstName: tg?.initDataUnsafe?.user?.first_name,
-          lastName: tg?.initDataUnsafe?.user?.last_name,
-          username: tg?.initDataUnsafe?.user?.username,
-        }),
+        body: JSON.stringify(body),
       });
 
-      // Handle error responses with friendly messages
+      // Handle error responses
       if (!res.ok) {
         let errorContent = "Sorry, something went wrong. Please try again.";
         try {
@@ -119,7 +182,7 @@ export function ChatView({ agent, onBack }: Props) {
           );
         }
       }
-    } catch (err) {
+    } catch {
       const errorMsg: ChatMessage = {
         id: crypto.randomUUID(),
         role: "assistant",
@@ -156,14 +219,14 @@ export function ChatView({ agent, onBack }: Props) {
               {agent.description}
             </p>
             <p className="text-xs mt-3" style={{ color: "var(--tg-theme-hint-color)" }}>
-              Send a message to start chatting
+              Send a message or attach an image to start
             </p>
           </div>
         )}
         {messages.map((msg) => (
           <div key={msg.id}
                className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}>
-            <div className="max-w-[80%] rounded-2xl px-4 py-2.5 text-sm leading-relaxed"
+            <div className="max-w-[80%] rounded-2xl px-4 py-2.5 text-sm leading-relaxed whitespace-pre-wrap"
                  style={{
                    background: msg.role === "user"
                      ? "var(--tg-theme-button-color)"
@@ -181,17 +244,55 @@ export function ChatView({ agent, onBack }: Props) {
         <div ref={messagesEndRef} />
       </div>
 
+      {/* Attachment preview */}
+      {attachment && (
+        <div className="px-4 py-2 border-t flex items-center gap-3"
+             style={{ borderColor: "var(--tg-theme-secondary-bg-color)", background: "var(--tg-theme-bg-color)" }}>
+          {attachment.preview ? (
+            <img src={attachment.preview} alt="Preview" className="w-12 h-12 rounded-lg object-cover" />
+          ) : (
+            <div className="w-12 h-12 rounded-lg flex items-center justify-center text-lg"
+                 style={{ background: "var(--tg-theme-secondary-bg-color)" }}>
+              📎
+            </div>
+          )}
+          <div className="flex-1 min-w-0">
+            <div className="text-sm font-medium truncate">{attachment.name}</div>
+            <div className="text-xs" style={{ color: "var(--tg-theme-hint-color)" }}>
+              {attachment.type === "image" ? "Image" : "File"} attached
+            </div>
+          </div>
+          <button onClick={removeAttachment} className="text-lg p-1 opacity-60">✕</button>
+        </div>
+      )}
+
       {/* Input */}
       <div className="px-4 py-3 border-t"
            style={{ borderColor: "var(--tg-theme-secondary-bg-color)", background: "var(--tg-theme-bg-color)" }}>
-        <div className="flex gap-2">
+        <div className="flex gap-2 items-center">
+          {/* Attachment button */}
+          <button
+            onClick={() => fileInputRef.current?.click()}
+            disabled={loading}
+            className="rounded-full w-10 h-10 flex items-center justify-center text-lg transition-opacity disabled:opacity-30 flex-shrink-0"
+            style={{ background: "var(--tg-theme-secondary-bg-color)" }}
+          >
+            📎
+          </button>
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/*,.pdf,.txt,.md,.csv,.json"
+            onChange={handleFileSelect}
+            className="hidden"
+          />
           <input
             ref={inputRef}
             type="text"
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && sendMessage()}
-            placeholder="Type a message..."
+            placeholder={attachment ? "Add a caption..." : "Type a message..."}
             className="flex-1 rounded-full px-4 py-2.5 text-sm outline-none"
             style={{
               background: "var(--tg-theme-secondary-bg-color)",
@@ -201,8 +302,8 @@ export function ChatView({ agent, onBack }: Props) {
           />
           <button
             onClick={sendMessage}
-            disabled={!input.trim() || loading}
-            className="rounded-full w-10 h-10 flex items-center justify-center text-sm font-bold transition-opacity disabled:opacity-30"
+            disabled={(!input.trim() && !attachment) || loading}
+            className="rounded-full w-10 h-10 flex items-center justify-center text-sm font-bold transition-opacity disabled:opacity-30 flex-shrink-0"
             style={{
               background: "var(--tg-theme-button-color)",
               color: "var(--tg-theme-button-text-color)",

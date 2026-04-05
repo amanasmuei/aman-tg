@@ -22,13 +22,19 @@ function getClient(): Anthropic {
 // POST /chat — send message to agent with streaming + persistence
 app.post("/", async (c) => {
   const body = await c.req.json();
-  const { agentId, message, telegramId, firstName, lastName, username } = body as {
+  const { agentId, message, telegramId, firstName, lastName, username, attachment } = body as {
     agentId: string;
     message: string;
     telegramId?: number;
     firstName?: string;
     lastName?: string;
     username?: string;
+    attachment?: {
+      type: "image" | "file";
+      name: string;
+      base64: string;
+      mediaType: string;
+    };
   };
 
   const agent = AGENTS.find((a) => a.id === agentId);
@@ -80,15 +86,48 @@ app.post("/", async (c) => {
     }));
   }
 
-  // Save user message to DB
+  // Save user message to DB (with attachment info if present)
   if (conversation) {
-    saveMessage(conversation.id, "user", message);
+    const savedContent = attachment
+      ? `${attachment.type === "image" ? "📷" : "📎"} ${attachment.name}${message ? `\n${message}` : ""}`
+      : message;
+    saveMessage(conversation.id, "user", savedContent);
   }
 
   // Build messages for Claude
-  const messages: Array<{ role: "user" | "assistant"; content: string }> = [
+  // For messages with attachments, use content blocks format
+  let userContent: Anthropic.Messages.ContentBlockParam[] | string = message;
+
+  if (attachment && attachment.type === "image") {
+    userContent = [
+      {
+        type: "image" as const,
+        source: {
+          type: "base64" as const,
+          media_type: attachment.mediaType as "image/png" | "image/jpeg" | "image/gif" | "image/webp",
+          data: attachment.base64,
+        },
+      },
+      {
+        type: "text" as const,
+        text: message || "What's in this image?",
+      },
+    ];
+  } else if (attachment && attachment.type === "file") {
+    try {
+      const fileContent = Buffer.from(attachment.base64, "base64").toString("utf-8");
+      const truncated = fileContent.length > 10000
+        ? fileContent.slice(0, 10000) + "\n\n[... truncated]"
+        : fileContent;
+      userContent = `[File: ${attachment.name}]\n\`\`\`\n${truncated}\n\`\`\`\n\n${message || "Analyze this file."}`;
+    } catch {
+      userContent = message || "I attached a file but it couldn't be read.";
+    }
+  }
+
+  const messages: Anthropic.Messages.MessageParam[] = [
     ...history,
-    { role: "user", content: message },
+    { role: "user" as const, content: userContent },
   ];
 
   // Build system prompt with user context
