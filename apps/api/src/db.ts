@@ -201,8 +201,13 @@ export interface DbConversation {
   updated_at: number;
 }
 
-export function getConversationById(conversationId: string): DbConversation | null {
+export function getConversationById(conversationId: string, telegramId?: number): DbConversation | null {
   const db = getDb();
+  // Always filter by telegram_id when provided to prevent cross-user access
+  if (telegramId) {
+    const row = db.prepare("SELECT * FROM conversations WHERE id = ? AND telegram_id = ?").get(conversationId, telegramId) as DbConversation | undefined;
+    return row || null;
+  }
   const row = db.prepare("SELECT * FROM conversations WHERE id = ?").get(conversationId) as DbConversation | undefined;
   return row || null;
 }

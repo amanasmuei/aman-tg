@@ -21,7 +21,7 @@ app.get("/:agentId", (c) => {
   // Load specific conversation if ID provided, otherwise latest for this agent
   const convId = c.req.query("conversationId");
   const conversation = convId
-    ? getConversationById(convId)
+    ? getConversationById(convId, telegramId)
     : getConversation(telegramId, agentId);
   if (!conversation) {
     return c.json({ conversation: null, messages: [] });
