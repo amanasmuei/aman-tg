@@ -6,12 +6,15 @@ import { AgentDetail } from "./components/AgentDetail";
 import { Header } from "./components/Header";
 import { Landing } from "./components/Landing";
 import { Onboarding } from "./components/Onboarding";
+import { detectLocale, t } from "./lib/i18n";
 import { AGENTS } from "@aman-tg/shared";
 import type { Agent } from "@aman-tg/shared";
 
 type Page = "home" | "chat" | "detail" | "history";
 
 export function App() {
+  // Auto-detect locale from Telegram user
+  detectLocale();
   const [page, setPage] = useState<Page>("home");
   const [selectedAgent, setSelectedAgent] = useState<Agent | null>(null);
   const [userPlan, setUserPlan] = useState("free");
@@ -83,7 +86,7 @@ export function App() {
               style={{ background: "var(--tg-theme-secondary-bg-color)" }}
             >
               <span>💬</span>
-              <span>Continue a conversation</span>
+              <span>{t("continueConversation")}</span>
               <span className="ml-auto" style={{ color: "var(--tg-theme-hint-color)" }}>›</span>
             </button>
           </div>

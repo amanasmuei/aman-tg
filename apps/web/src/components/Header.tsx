@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { t } from "../lib/i18n";
 
 interface UsageInfo {
   messagesUsed: number;
@@ -50,7 +51,7 @@ export function Header() {
         )}
       </div>
       <p className="text-sm" style={{ color: "var(--tg-theme-hint-color)" }}>
-        Your AI companion that remembers you
+        {t("tagline")}
       </p>
       {usage && usage.plan === "free" && usage.messagesLimit > 0 && (
         <div className="mt-2 flex items-center gap-2">
@@ -65,7 +66,7 @@ export function Header() {
             />
           </div>
           <span className="text-xs flex-shrink-0" style={{ color: isLow ? "#ef4444" : "var(--tg-theme-hint-color)" }}>
-            {usage.messagesUsed}/{usage.messagesLimit}
+            {usage.messagesUsed}/{usage.messagesLimit} {t("messages")}
           </span>
         </div>
       )}

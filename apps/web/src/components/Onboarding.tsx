@@ -1,15 +1,7 @@
 import { useState } from "react";
 import { AGENTS } from "@aman-tg/shared";
 import type { Agent } from "@aman-tg/shared";
-
-const INTERESTS = [
-  { id: "coding", label: "Coding & Tech", icon: "💻" },
-  { id: "education", label: "Learning & Study", icon: "📚" },
-  { id: "business", label: "Business & Career", icon: "💼" },
-  { id: "lifestyle", label: "Lifestyle & Wellness", icon: "🌟" },
-  { id: "personal", label: "Personal & Creative", icon: "✨" },
-  { id: "islamic", label: "Islamic & Quran", icon: "🕌" },
-];
+import { t } from "../lib/i18n";
 
 function StepIndicator({ current }: { current: number }) {
   return (
@@ -33,6 +25,15 @@ interface Props {
 }
 
 export function Onboarding({ onComplete }: Props) {
+  const INTERESTS = [
+    { id: "coding", label: t("codingTech"), icon: "💻" },
+    { id: "education", label: t("learningStudy"), icon: "📚" },
+    { id: "business", label: t("businessCareer"), icon: "💼" },
+    { id: "lifestyle", label: t("lifestyleWellness"), icon: "🌟" },
+    { id: "personal", label: t("personalCreative"), icon: "✨" },
+    { id: "islamic", label: t("islamicQuran"), icon: "🕌" },
+  ];
+
   const [step, setStep] = useState<"welcome" | "interests" | "recommendation">("welcome");
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [recommended, setRecommended] = useState<Agent[]>([]);

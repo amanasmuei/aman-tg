@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from "react";
 import type { Agent, ChatMessage } from "@aman-tg/shared";
 import { Markdown } from "./Markdown";
+import { t, getLanguageDirective } from "../lib/i18n";
 
 interface Attachment {
   type: "image" | "file";
@@ -53,7 +54,7 @@ export function ChatView({ agent, onBack }: Props) {
 
     // Max 10MB
     if (file.size > 10 * 1024 * 1024) {
-      alert("File too large. Maximum 10MB.");
+      alert(t("fileTooLarge"));
       return;
     }
 
@@ -91,7 +92,7 @@ export function ChatView({ agent, onBack }: Props) {
     const text = input.trim();
     if ((!text && !attachment) || loading) return;
     if (text.length > 10000) {
-      alert("Message too long. Maximum 10,000 characters.");
+      alert(t("messageTooLong"));
       return;
     }
 
@@ -122,6 +123,7 @@ export function ChatView({ agent, onBack }: Props) {
       const body: Record<string, unknown> = {
         agentId: agent.id,
         message: text || "What's in this image?",
+        languageHint: getLanguageDirective(),
         telegramId: tg?.initDataUnsafe?.user?.id,
         firstName: tg?.initDataUnsafe?.user?.first_name,
         lastName: tg?.initDataUnsafe?.user?.last_name,
@@ -148,13 +150,13 @@ export function ChatView({ agent, onBack }: Props) {
 
       // Handle error responses
       if (!res.ok) {
-        let errorContent = "Sorry, something went wrong. Please try again.";
+        let errorContent = t("somethingWrong");
         try {
           const errData = await res.json();
           if (res.status === 403) {
-            errorContent = `⭐ ${agent.name} is a Premium agent.\n\nUpgrade to Pro to unlock unlimited messages and all premium agents!\n\nUse /pro in the bot chat to upgrade.`;
+            errorContent = `⭐ ${agent.name} ${t("premiumAgent")}`;
           } else if (res.status === 429) {
-            errorContent = `You've reached your daily limit of ${errData.limit} messages.\n\nUpgrade to Pro for unlimited access!\n\nUse /pro in the bot chat to upgrade.`;
+            errorContent = `${t("dailyLimit")} ${errData.limit} ${t("upgradeForUnlimited")}`;
           }
         } catch {}
         const errMsg: ChatMessage = {
@@ -199,7 +201,7 @@ export function ChatView({ agent, onBack }: Props) {
       const errorMsg: ChatMessage = {
         id: crypto.randomUUID(),
         role: "assistant",
-        content: "Sorry, something went wrong. Please try again.",
+        content: t("somethingWrong"),
         timestamp: Date.now(),
         agentId: agent.id,
       };
@@ -228,7 +230,7 @@ export function ChatView({ agent, onBack }: Props) {
           className="text-xs px-3 py-1.5 rounded-full"
           style={{ background: "var(--tg-theme-secondary-bg-color)", color: "var(--tg-theme-hint-color)" }}
         >
-          + New
+          {t("newChat")}
         </button>
       </div>
 
@@ -242,7 +244,7 @@ export function ChatView({ agent, onBack }: Props) {
               {agent.description}
             </p>
             <p className="text-xs mt-3" style={{ color: "var(--tg-theme-hint-color)" }}>
-              Send a message or attach an image to start
+              {t("sendOrAttach")}
             </p>
           </div>
         )}
@@ -297,7 +299,7 @@ export function ChatView({ agent, onBack }: Props) {
           <div className="flex-1 min-w-0">
             <div className="text-sm font-medium truncate">{attachment.name}</div>
             <div className="text-xs" style={{ color: "var(--tg-theme-hint-color)" }}>
-              {attachment.type === "image" ? "Image" : "File"} attached
+              {attachment.type === "image" ? t("imageAttached") : t("fileAttached")}
             </div>
           </div>
           <button onClick={removeAttachment} className="text-lg p-1 opacity-60">✕</button>
@@ -330,7 +332,7 @@ export function ChatView({ agent, onBack }: Props) {
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && sendMessage()}
-            placeholder={attachment ? "Add a caption..." : "Type a message..."}
+            placeholder={attachment ? t("addCaption") : t("typeMessage")}
             className="flex-1 rounded-full px-4 py-2.5 text-sm outline-none"
             style={{
               background: "var(--tg-theme-secondary-bg-color)",

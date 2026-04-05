@@ -32,6 +32,7 @@ app.post("/", async (c) => {
     lastName?: string;
     username?: string;
     newConversation?: boolean;
+    languageHint?: string;
     attachment?: {
       type: "image" | "file";
       name: string;
@@ -173,6 +174,14 @@ app.post("/", async (c) => {
   let systemPrompt = agent.systemPrompt;
   if (safeName) {
     systemPrompt += `\n\nThe user's name is ${safeName}. Address them naturally.`;
+  }
+
+  // Tone and language
+  systemPrompt += `\n\nIMPORTANT: Always respond with a polite, humble, and respectful tone. Be warm and approachable. Use "please", "thank you", and considerate language. Never be arrogant or dismissive.`;
+
+  const languageHint = (body.languageHint || "").slice(0, 200);
+  if (languageHint) {
+    systemPrompt += `\n\n${languageHint}`;
   }
 
   // Inject persistent memories (cross-agent, cross-session)
