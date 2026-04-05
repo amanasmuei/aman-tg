@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from "react";
 import type { Agent, ChatMessage } from "@aman-tg/shared";
+import { Markdown } from "./Markdown";
 
 interface Attachment {
   type: "image" | "file";
@@ -248,7 +249,7 @@ export function ChatView({ agent, onBack }: Props) {
         {messages.map((msg) => (
           <div key={msg.id}
                className={`flex message-appear ${msg.role === "user" ? "justify-end" : "justify-start"}`}>
-            <div className="max-w-[80%] rounded-2xl px-4 py-2.5 text-sm leading-relaxed whitespace-pre-wrap"
+            <div className="max-w-[80%] rounded-2xl px-4 py-2.5 text-sm leading-relaxed"
                  style={{
                    background: msg.role === "user"
                      ? "var(--tg-theme-button-color)"
@@ -259,11 +260,17 @@ export function ChatView({ agent, onBack }: Props) {
                    borderBottomRightRadius: msg.role === "user" ? "4px" : undefined,
                    borderBottomLeftRadius: msg.role === "assistant" ? "4px" : undefined,
                  }}>
-              {msg.content || (loading ? (
-  <span className="typing-dots">
-    <span>●</span><span>●</span><span>●</span>
-  </span>
-) : "")}
+              {msg.content ? (
+                msg.role === "assistant"
+                  ? <Markdown content={msg.content} />
+                  : <span className="whitespace-pre-wrap">{msg.content}</span>
+              ) : (
+                loading ? (
+                  <span className="typing-dots">
+                    <span>●</span><span>●</span><span>●</span>
+                  </span>
+                ) : null
+              )}
               {msg.content && (
                 <div className="text-right mt-1" style={{ fontSize: "0.6rem", opacity: 0.5 }}>
                   {new Date(msg.timestamp).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
