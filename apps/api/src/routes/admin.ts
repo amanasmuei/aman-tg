@@ -1,5 +1,5 @@
 import { Hono } from "hono";
-import { getDb } from "../db.js";
+import { getDb, upsertMerchant, upsertServiceItem, updateItemAvailability } from "../db.js";
 
 const app = new Hono();
 
@@ -127,6 +127,27 @@ app.get("/users", (c) => {
     })),
     total: users.length,
   });
+});
+
+// POST /merchants — upsert merchant
+app.post("/merchants", async (c) => {
+  const data = await c.req.json();
+  const merchant = upsertMerchant(data);
+  return c.json({ merchant });
+});
+
+// POST /service-items — upsert service item
+app.post("/service-items", async (c) => {
+  const data = await c.req.json();
+  const item = upsertServiceItem(data);
+  return c.json({ item });
+});
+
+// POST /items/:id/availability — toggle availability
+app.post("/items/:id/availability", async (c) => {
+  const { is_available } = await c.req.json<{ is_available: boolean }>();
+  updateItemAvailability(c.req.param("id"), is_available);
+  return c.json({ ok: true });
 });
 
 export default app;
