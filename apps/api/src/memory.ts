@@ -146,8 +146,8 @@ export function extractAndStoreMemories(
 
         break; // One match per message
       }
-    } catch {
-      // Silent failure — don't affect chat
+    } catch (err) {
+      console.error(`[MEMORY] Extract failed for user ${telegramId}:`, err);
     }
   });
 }

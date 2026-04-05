@@ -44,7 +44,7 @@ export async function sendDailyNotifications(
 
     for (const user of data.users) {
       // Only notify users who have actually used the app (>2 messages)
-      if (user.totalMessages < 3) continue;
+      if (!user.totalMessages || user.totalMessages < 3) continue;
 
       try {
         const greeting = randomItem(GREETINGS);

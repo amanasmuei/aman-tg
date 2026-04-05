@@ -25,7 +25,7 @@ function getClient(): Anthropic {
 // POST /chat — send message to agent with streaming + persistence
 app.post("/", async (c) => {
   const body = await c.req.json();
-  const { agentId, message, telegramId, firstName, lastName, username, attachment } = body as {
+  const { agentId, message, telegramId, firstName, lastName, username, attachment, newConversation, languageHint } = body as {
     agentId: string;
     message: string;
     telegramId?: number;
@@ -110,7 +110,7 @@ app.post("/", async (c) => {
   // Get or create conversation
   let conversation = null;
   if (userId) {
-    if (body.newConversation) {
+    if (newConversation) {
       conversation = createNewConversation(userId, agentId);
     } else {
       conversation = getOrCreateConversation(userId, agentId);
@@ -164,7 +164,8 @@ app.post("/", async (c) => {
         ? fileContent.slice(0, 10000) + "\n\n[... truncated]"
         : fileContent;
       userContent = `[File: ${attachment.name}]\n\`\`\`\n${truncated}\n\`\`\`\n\n${message || "Analyze this file."}`;
-    } catch {
+    } catch (err) {
+      console.error(`[ATTACHMENT] Failed to decode file:`, err);
       userContent = message || "I attached a file but it couldn't be read.";
     }
   }
@@ -188,9 +189,9 @@ app.post("/", async (c) => {
     systemPrompt += `\n\nThis is your FIRST interaction with this user. Start with a warm, brief welcome. Introduce yourself in 1-2 sentences, then address their message. Don't list everything you can do — just be helpful and friendly.`;
   }
 
-  const languageHint = (body.languageHint || "").slice(0, 200);
-  if (languageHint) {
-    systemPrompt += `\n\n${languageHint}`;
+  const safeLanguageHint = (languageHint || "").slice(0, 200);
+  if (safeLanguageHint) {
+    systemPrompt += `\n\n${safeLanguageHint}`;
   }
 
   // Inject persistent memories (cross-agent, cross-session)

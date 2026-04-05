@@ -25,14 +25,18 @@ async function chatWithAgent(
 ): Promise<string> {
   try {
     const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 30000); // 30s timeout
-    const res = await fetch(`${apiUrl}/api/chat`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ agentId, message, telegramId, firstName, lastName, username }),
-      signal: controller.signal,
-    });
-    clearTimeout(timeout);
+    const timeoutId = setTimeout(() => controller.abort(), 30000);
+    let res: Response;
+    try {
+      res = await fetch(`${apiUrl}/api/chat`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ agentId, message, telegramId, firstName, lastName, username }),
+        signal: controller.signal,
+      });
+    } finally {
+      clearTimeout(timeoutId);
+    }
 
     if (res.status === 429) {
       const data = await res.json() as { limit: number };
@@ -56,7 +60,12 @@ async function chatWithAgent(
 
 async function getUserPlan(telegramId: number): Promise<string> {
   try {
-    const res = await fetch(`${apiUrl}/api/users/me?telegramId=${telegramId}`);
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 5000);
+    const res = await fetch(`${apiUrl}/api/users/me?telegramId=${telegramId}`, {
+      signal: controller.signal,
+    });
+    clearTimeout(timeoutId);
     if (res.ok) {
       const data = await res.json() as { plan: string };
       return data.plan || "free";
@@ -252,16 +261,22 @@ bot.on("message:successful_payment", async (ctx) => {
   if (!user) return;
 
   try {
+    const controller = new AbortController();
+    const tid = setTimeout(() => controller.abort(), 10000);
     await fetch(`${apiUrl}/api/users/me/agent`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ telegramId: user.id, plan: "pro" }),
+      signal: controller.signal,
     });
+    clearTimeout(tid);
   } catch (err) {
     console.error("[PAYMENT] Failed to update user agent:", err);
   }
 
   try {
+    const controller = new AbortController();
+    const tid = setTimeout(() => controller.abort(), 10000);
     const upgradeRes = await fetch(`${apiUrl}/api/users/upgrade`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -272,7 +287,9 @@ bot.on("message:successful_payment", async (ctx) => {
         chargeId: payment.telegram_payment_charge_id,
         totalAmount: payment.total_amount,
       }),
+      signal: controller.signal,
     });
+    clearTimeout(tid);
     if (!upgradeRes.ok) {
       console.error("[PAYMENT] Upgrade API returned:", upgradeRes.status);
     }

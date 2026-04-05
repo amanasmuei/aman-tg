@@ -103,7 +103,11 @@ export async function runAgentLoop(opts: AgentStreamOptions): Promise<string> {
       assistantContent.push({ type: "text", text: turnText });
     }
     for (const block of toolUseBlocks) {
-      const input = block.inputJson ? JSON.parse(block.inputJson) : {};
+      let input: Record<string, unknown> = {};
+      if (block.inputJson) {
+        try { input = JSON.parse(block.inputJson); }
+        catch { console.error(`[AGENT] Failed to parse tool input for ${block.name}:`, block.inputJson); }
+      }
       assistantContent.push({
         type: "tool_use",
         id: block.id,
@@ -116,7 +120,11 @@ export async function runAgentLoop(opts: AgentStreamOptions): Promise<string> {
     // Execute each tool and collect results
     const toolResults: Anthropic.Messages.ToolResultBlockParam[] = [];
     for (const block of toolUseBlocks) {
-      const input = block.inputJson ? JSON.parse(block.inputJson) : {};
+      let input: Record<string, unknown> = {};
+      if (block.inputJson) {
+        try { input = JSON.parse(block.inputJson); }
+        catch { console.error(`[AGENT] Failed to parse tool input for ${block.name}:`, block.inputJson); }
+      }
       onToolUse?.(block.name);
 
       const result = await executeTool(block.name, input as Record<string, unknown>);
