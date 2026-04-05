@@ -397,33 +397,19 @@ bot.hears("⭐ Go Pro", async (ctx) => {
   );
 });
 
-// Handle text messages — chat with selected agent
+// Handle text messages — redirect to Mini App
 bot.on("message:text", async (ctx) => {
-  const userMessage = ctx.message.text;
-  const user = ctx.from;
-  if (!user) return;
+  const current = userAgents.get(ctx.from?.id ?? 0) || "coding";
+  const agent = AGENTS.find((a) => a.id === current);
 
-  const agentId = userAgents.get(user.id) || "coding";
+  const keyboard = new InlineKeyboard()
+    .webApp(`${agent?.icon || "💬"} Chat with ${agent?.name || "aman"}`, miniAppUrl);
 
-  await ctx.replyWithChatAction("typing");
-
-  const response = await chatWithAgent(
-    agentId,
-    userMessage,
-    user.id,
-    user.first_name,
-    user.last_name,
-    user.username,
+  await ctx.reply(
+    `Open the Mini App to chat with *${agent?.name || "your agent"}*! 👇\n\n` +
+    `The full experience — streaming responses, conversation history, and more — is in the app.`,
+    { parse_mode: "Markdown", reply_markup: keyboard },
   );
-
-  if (response.length > 4000) {
-    const chunks = response.match(/[\s\S]{1,4000}/g) || [response];
-    for (const chunk of chunks) {
-      await ctx.reply(chunk);
-    }
-  } else {
-    await ctx.reply(response);
-  }
 });
 
 // /help
