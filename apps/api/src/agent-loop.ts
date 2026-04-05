@@ -20,6 +20,7 @@ interface AgentStreamOptions {
   onText: (text: string) => Promise<void>;
   onToolUse?: (toolName: string) => void;
   toolContext?: ToolContext;
+  agentTools?: string[];
 }
 
 /**
@@ -36,8 +37,13 @@ export async function runAgentLoop(opts: AgentStreamOptions): Promise<string> {
   let fullResponse = "";
   let toolTurns = 0;
 
+  // Filter tools to only those the agent is allowed to use
+  const filteredTools = opts.agentTools
+    ? TOOLS.filter((t) => opts.agentTools!.includes(t.name))
+    : TOOLS;
+
   // Convert our tool definitions to Anthropic format
-  const tools: Anthropic.Messages.Tool[] = TOOLS.map((t) => ({
+  const tools: Anthropic.Messages.Tool[] = filteredTools.map((t) => ({
     name: t.name,
     description: t.description,
     input_schema: t.input_schema as Anthropic.Messages.Tool["input_schema"],

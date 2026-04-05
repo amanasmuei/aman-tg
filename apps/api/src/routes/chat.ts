@@ -271,7 +271,7 @@ When the user mentions something they need to do, remember, or track — proacti
           onToolUse: (toolName) => {
             console.log(`[TOOL] ${toolName} called by ${agentId} for user ${userId} (ollama)`);
           },
-          toolContext: { telegramId: userId },
+          toolContext: { telegramId: userId, conversationId: conversation?.id },
         });
       } else {
         // Pro/Team tier: Claude (or fallback if no Ollama key)
@@ -297,7 +297,8 @@ When the user mentions something they need to do, remember, or track — proacti
           onToolUse: (toolName) => {
             console.log(`[TOOL] ${toolName} called by ${agentId} for user ${userId}`);
           },
-          toolContext: { telegramId: userId },
+          toolContext: { telegramId: userId, conversationId: conversation?.id },
+          agentTools: agent.tools,
         });
       }
 
