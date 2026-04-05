@@ -260,20 +260,7 @@ bot.on("message:successful_payment", async (ctx) => {
   const user = ctx.from;
   if (!user) return;
 
-  try {
-    const controller = new AbortController();
-    const tid = setTimeout(() => controller.abort(), 10000);
-    await fetch(`${apiUrl}/api/users/me/agent`, {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ telegramId: user.id, plan: "pro" }),
-      signal: controller.signal,
-    });
-    clearTimeout(tid);
-  } catch (err) {
-    console.error("[PAYMENT] Failed to update user agent:", err);
-  }
-
+  // Upgrade user plan via dedicated endpoint
   try {
     const controller = new AbortController();
     const tid = setTimeout(() => controller.abort(), 10000);

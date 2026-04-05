@@ -1,5 +1,5 @@
 import { Hono } from "hono";
-import { getOrCreateConversation, createNewConversation, getMessages, listConversations } from "../db.js";
+import { getConversation, createNewConversation, getMessages, listConversations } from "../db.js";
 
 const app = new Hono();
 
@@ -18,7 +18,11 @@ app.get("/:agentId", (c) => {
   const agentId = c.req.param("agentId");
   if (!telegramId) return c.json({ error: "telegramId required" }, 400);
 
-  const conversation = getOrCreateConversation(telegramId, agentId);
+  const conversation = getConversation(telegramId, agentId);
+  if (!conversation) {
+    return c.json({ conversation: null, messages: [] });
+  }
+
   const messages = getMessages(conversation.id, 50);
 
   return c.json({

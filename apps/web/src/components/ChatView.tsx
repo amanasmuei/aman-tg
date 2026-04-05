@@ -91,7 +91,8 @@ export function ChatView({ agent, onBack }: Props) {
     reader.onload = () => {
       const result = reader.result as string;
       // result is "data:<mediaType>;base64,<data>"
-      const base64 = result.split(",")[1];
+      const base64 = result.split(",")[1] ?? "";
+      if (!base64) return;
       const mediaType = file.type || "application/octet-stream";
 
       const isImage = mediaType.startsWith("image/");

@@ -185,6 +185,14 @@ export interface DbConversation {
   updated_at: number;
 }
 
+export function getConversation(telegramId: number, agentId: string): DbConversation | null {
+  const db = getDb();
+  const row = db.prepare(
+    "SELECT * FROM conversations WHERE telegram_id = ? AND agent_id = ? ORDER BY updated_at DESC LIMIT 1",
+  ).get(telegramId, agentId) as DbConversation | undefined;
+  return row || null;
+}
+
 export function getOrCreateConversation(telegramId: number, agentId: string): DbConversation {
   const db = getDb();
 

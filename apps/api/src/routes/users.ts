@@ -49,6 +49,11 @@ app.post("/upgrade", async (c) => {
 
   if (!telegramId || !plan) return c.json({ error: "telegramId and plan required" }, 400);
 
+  const validPlans = ["free", "pro", "team"];
+  if (!validPlans.includes(plan)) {
+    return c.json({ error: "Invalid plan. Must be: free, pro, or team" }, 400);
+  }
+
   updateUserPlan(telegramId, plan);
 
   // Log the payment (simple append to a JSON file for now)
