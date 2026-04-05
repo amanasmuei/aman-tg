@@ -1,5 +1,5 @@
 import "dotenv/config";
-import { Bot, InlineKeyboard } from "grammy";
+import { Bot, InlineKeyboard, Keyboard } from "grammy";
 import { AGENTS } from "@aman-tg/shared";
 
 const token = process.env.BOT_TOKEN;
@@ -62,6 +62,41 @@ async function getUserPlan(telegramId: number): Promise<string> {
 
 const bot = new Bot(token);
 
+// ── Persistent reply keyboard (always visible at bottom) ──
+const mainKeyboard = new Keyboard()
+  .text("🤖 Switch Agent").text("⭐ Go Pro")
+  .row()
+  .webApp("📱 Open Mini App", miniAppUrl)
+  .resized()    // fit to content
+  .persistent(); // always visible
+
+// ── Set bot commands menu on startup ──
+bot.api.setMyCommands([
+  { command: "start", description: "Start aman" },
+  { command: "agent", description: "Switch AI agent" },
+  { command: "pro", description: "Upgrade to Pro" },
+  { command: "agents", description: "Browse all agents" },
+  { command: "help", description: "Get help" },
+]).catch(() => {});
+
+// ── Set bot description + short_description ──
+bot.api.setMyDescription(
+  "Your AI companion with 8 specialized agents.\n\n" +
+  "💻 Code Buddy — coding assistant\n" +
+  "📋 Daily Planner — organize your day\n" +
+  "📚 Study Mate — learning companion\n" +
+  "✨ Creative Spark — brainstorm partner\n" +
+  "💼 Biz Helper — business assistant\n" +
+  "🔍 Debug Pro ⭐ — systematic debugging\n" +
+  "💪 Health Coach ⭐ — fitness & wellness\n" +
+  "💰 Finance Advisor ⭐ — personal finance\n\n" +
+  "Tap Start to begin! 🚀",
+).catch(() => {});
+
+bot.api.setMyShortDescription(
+  "AI agent platform — coding, productivity, business, education. By Koolek Labs.",
+).catch(() => {});
+
 // /start
 bot.command("start", async (ctx) => {
   const user = ctx.from;
@@ -76,32 +111,18 @@ bot.command("start", async (ctx) => {
       userAgents.set(user.id, agentId);
       await ctx.reply(
         `${agent.icon} *${agent.name}* activated!\n\n_${agent.description}_\n\nSend me a message to start chatting.`,
-        { parse_mode: "Markdown" },
+        { parse_mode: "Markdown", reply_markup: mainKeyboard },
       );
       return;
     }
   }
 
-  const keyboard = new InlineKeyboard()
-    .webApp("Open aman", miniAppUrl)
-    .row()
-    .text("Browse Agents", "browse_agents")
-    .text("Upgrade to Pro", "show_pro");
-
   await ctx.reply(
     `Assalamualaikum ${name}! 👋\n\n` +
     `Welcome to *aman* — your AI companion that remembers you.\n\n` +
-    `🤖 *8 AI agents* ready to help:\n` +
-    `💻 Code Buddy — coding assistant\n` +
-    `📋 Daily Planner — organize your day\n` +
-    `📚 Study Mate — learning companion\n` +
-    `✨ Creative Spark — brainstorm partner\n` +
-    `💼 Biz Helper — business assistant\n` +
-    `🔍 Debug Pro ⭐ — systematic debugging\n` +
-    `💪 Health Coach ⭐ — fitness & wellness\n` +
-    `💰 Finance Advisor ⭐ — personal finance\n\n` +
-    `Tap *Open aman* to use the full Mini App, or just type a message here!`,
-    { parse_mode: "Markdown", reply_markup: keyboard },
+    `Just type a message to start chatting! I'm using 💻 *Code Buddy* by default.\n\n` +
+    `Use the buttons below to switch agents, upgrade, or open the full experience.`,
+    { parse_mode: "Markdown", reply_markup: mainKeyboard },
   );
 });
 
@@ -328,6 +349,52 @@ bot.callbackQuery("switch_menu", async (ctx) => {
     keyboard.text(`${agent.icon} ${agent.name}${agent.premium ? " ⭐" : ""}`, `switch_${agent.id}`).row();
   }
   await ctx.reply("Choose an agent:", { reply_markup: keyboard });
+});
+
+// ── Handle persistent keyboard button taps ──
+bot.hears("🤖 Switch Agent", async (ctx) => {
+  const user = ctx.from;
+  if (!user) return;
+  const current = userAgents.get(user.id) || "coding";
+  const currentAgent = AGENTS.find((a) => a.id === current);
+
+  const keyboard = new InlineKeyboard();
+  for (const agent of AGENTS) {
+    const label = agent.id === current
+      ? `${agent.icon} ${agent.name} ✓`
+      : `${agent.icon} ${agent.name}${agent.premium ? " ⭐" : ""}`;
+    keyboard.text(label, `switch_${agent.id}`).row();
+  }
+
+  await ctx.reply(
+    `Current: ${currentAgent?.icon} *${currentAgent?.name}*\n\nChoose a new agent:`,
+    { parse_mode: "Markdown", reply_markup: keyboard },
+  );
+});
+
+bot.hears("⭐ Go Pro", async (ctx) => {
+  const user = ctx.from;
+  if (!user) return;
+
+  const plan = await getUserPlan(user.id);
+  if (plan === "pro") {
+    await ctx.reply("✅ You're already on *Pro*! Unlimited messages and all agents unlocked.", { parse_mode: "Markdown" });
+    return;
+  }
+
+  const keyboard = new InlineKeyboard()
+    .text("⭐ 100 Stars — 1 Month", "buy_pro_100")
+    .row()
+    .text("⭐ 250 Stars — 3 Months", "buy_pro_250");
+
+  await ctx.reply(
+    `⭐ *aman Pro*\n\n` +
+    `• Unlimited messages (no daily limit)\n` +
+    `• Premium agents unlocked\n` +
+    `• Priority response speed\n\n` +
+    `Choose a plan:`,
+    { parse_mode: "Markdown", reply_markup: keyboard },
+  );
 });
 
 // Handle text messages — chat with selected agent
