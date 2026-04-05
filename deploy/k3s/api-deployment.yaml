@@ -1,0 +1,81 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: aman-api
+  namespace: aman
+  labels:
+    app: aman-api
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: aman-api
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+  template:
+    metadata:
+      labels:
+        app: aman-api
+    spec:
+      containers:
+      - name: api
+        image: node:22-slim
+        workingDir: /app
+        command: ["node", "apps/api/dist/index.js"]
+        ports:
+        - containerPort: 3000
+          name: http
+        envFrom:
+        - secretRef:
+            name: aman-tg-secrets
+        env:
+        - name: NODE_ENV
+          value: production
+        - name: PORT
+          value: "3000"
+        - name: MINI_APP_URL
+          value: https://aman.kooleklabs.com
+        - name: DATA_DIR
+          value: /data
+        - name: WEB_DIST_PATH
+          value: /app/apps/web/dist
+        resources:
+          requests:
+            memory: "128Mi"
+            cpu: "100m"
+          limits:
+            memory: "512Mi"
+            cpu: "500m"
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 3000
+          initialDelaySeconds: 10
+          periodSeconds: 30
+          timeoutSeconds: 5
+          failureThreshold: 3
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 3000
+          initialDelaySeconds: 5
+          periodSeconds: 10
+          timeoutSeconds: 3
+        volumeMounts:
+        - name: app-code
+          mountPath: /app
+          readOnly: true
+        - name: data
+          mountPath: /data
+      volumes:
+      - name: app-code
+        hostPath:
+          path: /var/www/aman-tg
+          type: Directory
+      - name: data
+        hostPath:
+          path: /var/www/aman-tg/data
+          type: DirectoryOrCreate

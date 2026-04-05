@@ -1,0 +1,50 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: aman-bot
+  namespace: aman
+  labels:
+    app: aman-bot
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: aman-bot
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      labels:
+        app: aman-bot
+    spec:
+      containers:
+      - name: bot
+        image: node:22-slim
+        workingDir: /app
+        command: ["node", "apps/bot/dist/index.js"]
+        envFrom:
+        - secretRef:
+            name: aman-tg-secrets
+        env:
+        - name: NODE_ENV
+          value: production
+        - name: MINI_APP_URL
+          value: https://aman.kooleklabs.com
+        - name: API_URL
+          value: http://aman-api-svc:3000
+        resources:
+          requests:
+            memory: "64Mi"
+            cpu: "50m"
+          limits:
+            memory: "256Mi"
+            cpu: "200m"
+        volumeMounts:
+        - name: app-code
+          mountPath: /app
+          readOnly: true
+      volumes:
+      - name: app-code
+        hostPath:
+          path: /var/www/aman-tg
+          type: Directory
