@@ -15,7 +15,9 @@ interface RuleCategory {
   rules: string[];
 }
 
-const RULES_PATH = process.env.RULES_PATH || path.join(process.cwd(), "rules.md");
+// Resolve relative to this file's package, not process.cwd()
+const __dirname = path.dirname(new URL(import.meta.url).pathname);
+const RULES_PATH = process.env.RULES_PATH || path.join(__dirname, "..", "rules.md");
 
 let _cachedRules: RuleCategory[] | null = null;
 let _cachedRulesContent: string | null = null;
