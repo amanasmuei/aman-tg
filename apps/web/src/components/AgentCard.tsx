@@ -9,12 +9,21 @@ interface Props {
 export function AgentCard({ agent, onSelect, userPlan = "free" }: Props) {
   const locked = agent.premium && userPlan === "free";
 
+  const gradients: Record<string, string> = {
+    coding: "linear-gradient(135deg, rgba(88,166,255,0.1) 0%, transparent 60%)",
+    productivity: "linear-gradient(135deg, rgba(63,185,80,0.1) 0%, transparent 60%)",
+    business: "linear-gradient(135deg, rgba(210,168,255,0.1) 0%, transparent 60%)",
+    education: "linear-gradient(135deg, rgba(245,158,11,0.1) 0%, transparent 60%)",
+    personal: "linear-gradient(135deg, rgba(248,81,73,0.1) 0%, transparent 60%)",
+    lifestyle: "linear-gradient(135deg, rgba(255,123,114,0.1) 0%, transparent 60%)",
+  };
+
   return (
     <button
       onClick={() => onSelect(agent)}
       className="text-left rounded-xl p-4 transition-transform active:scale-95 relative"
       style={{
-        background: "var(--tg-theme-secondary-bg-color)",
+        background: `${gradients[agent.category] || ""}, var(--tg-theme-secondary-bg-color)`,
         opacity: locked ? 0.7 : 1,
       }}
     >

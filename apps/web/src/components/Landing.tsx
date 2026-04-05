@@ -6,7 +6,7 @@ export function Landing() {
   return (
     <div className="min-h-screen" style={{ background: "linear-gradient(180deg, #0d1117 0%, #161b22 50%, #0d1117 100%)" }}>
       {/* Hero */}
-      <div className="px-6 pt-12 pb-8 text-center max-w-lg mx-auto">
+      <div className="px-6 pt-12 pb-8 text-center max-w-lg mx-auto fade-up">
         <div className="text-5xl mb-4">🤖</div>
         <h1 className="text-3xl font-bold tracking-tight mb-2" style={{ color: "#c9d1d9" }}>
           aman
@@ -30,7 +30,7 @@ export function Landing() {
       </div>
 
       {/* Features */}
-      <div className="px-6 py-8 max-w-lg mx-auto">
+      <div className="px-6 py-8 max-w-lg mx-auto fade-up fade-up-delay-1">
         <div className="grid grid-cols-2 gap-4">
           {[
             { icon: "🧠", title: "Remembers You", desc: "Cross-agent memory that persists across sessions" },
@@ -48,7 +48,7 @@ export function Landing() {
       </div>
 
       {/* Agent Showcase */}
-      <div className="px-6 py-8 max-w-lg mx-auto">
+      <div className="px-6 py-8 max-w-lg mx-auto fade-up fade-up-delay-2">
         <h2 className="text-lg font-bold mb-4 text-center" style={{ color: "#c9d1d9" }}>
           Meet Your Agents
         </h2>
@@ -69,7 +69,7 @@ export function Landing() {
       </div>
 
       {/* Pricing */}
-      <div className="px-6 py-8 max-w-lg mx-auto">
+      <div className="px-6 py-8 max-w-lg mx-auto fade-up fade-up-delay-3">
         <h2 className="text-lg font-bold mb-4 text-center" style={{ color: "#c9d1d9" }}>
           Simple Pricing
         </h2>
@@ -98,7 +98,7 @@ export function Landing() {
       </div>
 
       {/* CTA */}
-      <div className="px-6 py-12 text-center max-w-lg mx-auto">
+      <div className="px-6 py-12 text-center max-w-lg mx-auto fade-up fade-up-delay-4">
         <a
           href={BOT_URL}
           className="inline-block rounded-full px-10 py-4 text-base font-semibold transition-transform active:scale-95"

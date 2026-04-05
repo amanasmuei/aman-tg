@@ -56,8 +56,19 @@ export function ConversationList({ onSelect, onBack }: Props) {
 
       <div className="flex-1 overflow-y-auto px-4 py-4">
         {loading && (
-          <div className="text-center py-12" style={{ color: "var(--tg-theme-hint-color)" }}>
-            Loading...
+          <div className="space-y-3">
+            {[1, 2, 3].map((i) => (
+              <div key={i} className="rounded-xl p-4 animate-pulse"
+                   style={{ background: "var(--tg-theme-secondary-bg-color)" }}>
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-full" style={{ background: "var(--tg-theme-bg-color)" }} />
+                  <div className="flex-1">
+                    <div className="h-3 rounded w-24 mb-2" style={{ background: "var(--tg-theme-bg-color)" }} />
+                    <div className="h-2 rounded w-40" style={{ background: "var(--tg-theme-bg-color)" }} />
+                  </div>
+                </div>
+              </div>
+            ))}
           </div>
         )}
 
@@ -78,7 +89,7 @@ export function ConversationList({ onSelect, onBack }: Props) {
                 key={conv.id}
                 onClick={() => onSelect(conv.agent_id, conv.id)}
                 className="w-full text-left rounded-xl p-4 transition-transform active:scale-98"
-                style={{ background: "var(--tg-theme-secondary-bg-color)" }}
+                style={{ background: "var(--tg-theme-secondary-bg-color)", borderBottom: "1px solid var(--tg-theme-bg-color)" }}
               >
                 <div className="flex items-center gap-3">
                   <span className="text-xl flex-shrink-0">{agent?.icon || "💬"}</span>

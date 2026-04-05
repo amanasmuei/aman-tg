@@ -10,6 +10,15 @@ interface Props {
 
 export function AgentGrid({ onSelect, userPlan }: Props) {
   const [activeCategory, setActiveCategory] = useState("all");
+  const [animating, setAnimating] = useState(false);
+
+  const handleCategoryChange = (catId: string) => {
+    setAnimating(true);
+    setTimeout(() => {
+      setActiveCategory(catId);
+      setAnimating(false);
+    }, 150);
+  };
 
   const filtered = activeCategory === "all"
     ? AGENTS
@@ -22,7 +31,7 @@ export function AgentGrid({ onSelect, userPlan }: Props) {
         {AGENT_CATEGORIES.map((cat) => (
           <button
             key={cat.id}
-            onClick={() => setActiveCategory(cat.id)}
+            onClick={() => handleCategoryChange(cat.id)}
             className="flex-shrink-0 px-3 py-1.5 rounded-full text-sm font-medium transition-all"
             style={{
               background: activeCategory === cat.id
@@ -39,7 +48,8 @@ export function AgentGrid({ onSelect, userPlan }: Props) {
       </div>
 
       {/* Agent cards grid */}
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-2 gap-3 transition-opacity duration-150"
+           style={{ opacity: animating ? 0.3 : 1 }}>
         {filtered.map((agent) => (
           <AgentCard key={agent.id} agent={agent} onSelect={onSelect} userPlan={userPlan} />
         ))}

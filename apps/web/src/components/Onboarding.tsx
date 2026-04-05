@@ -11,6 +11,23 @@ const INTERESTS = [
   { id: "islamic", label: "Islamic & Quran", icon: "🕌" },
 ];
 
+function StepIndicator({ current }: { current: number }) {
+  return (
+    <div className="flex gap-2 justify-center mb-6">
+      {[0, 1, 2].map((i) => (
+        <div
+          key={i}
+          className="h-1 rounded-full transition-all duration-300"
+          style={{
+            width: i === current ? "32px" : "12px",
+            background: i <= current ? "var(--tg-theme-button-color)" : "var(--tg-theme-secondary-bg-color)",
+          }}
+        />
+      ))}
+    </div>
+  );
+}
+
 interface Props {
   onComplete: (agent: Agent) => void;
 }
@@ -66,6 +83,7 @@ export function Onboarding({ onComplete }: Props) {
   if (step === "welcome") {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center px-6 text-center">
+        <StepIndicator current={0} />
         <div className="text-5xl mb-4">🤖</div>
         <h1 className="text-2xl font-bold mb-2">Welcome to aman</h1>
         <p className="text-sm mb-8" style={{ color: "var(--tg-theme-hint-color)" }}>
@@ -86,6 +104,7 @@ export function Onboarding({ onComplete }: Props) {
   if (step === "interests") {
     return (
       <div className="min-h-screen flex flex-col px-6 pt-12">
+        <StepIndicator current={1} />
         <h2 className="text-xl font-bold mb-2 text-center">What are you into?</h2>
         <p className="text-sm text-center mb-6" style={{ color: "var(--tg-theme-hint-color)" }}>
           Pick your interests — we'll recommend agents for you
@@ -105,8 +124,11 @@ export function Onboarding({ onComplete }: Props) {
                   border: isSelected ? "2px solid var(--tg-theme-button-color)" : "2px solid transparent",
                 }}
               >
-                <div className="text-2xl mb-1">{interest.icon}</div>
-                <div className="text-sm font-medium">{interest.label}</div>
+                <div className="flex items-center justify-between">
+                  <span className="text-2xl">{interest.icon}</span>
+                  {isSelected && <span className="text-sm">✓</span>}
+                </div>
+                <div className="text-sm font-medium mt-1">{interest.label}</div>
               </button>
             );
           })}
@@ -127,6 +149,7 @@ export function Onboarding({ onComplete }: Props) {
   // Recommendation step
   return (
     <div className="min-h-screen flex flex-col px-6 pt-12">
+      <StepIndicator current={2} />
       <h2 className="text-xl font-bold mb-2 text-center">Perfect for you!</h2>
       <p className="text-sm text-center mb-6" style={{ color: "var(--tg-theme-hint-color)" }}>
         Based on your interests, try these agents:
