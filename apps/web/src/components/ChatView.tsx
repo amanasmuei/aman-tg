@@ -70,6 +70,29 @@ export function ChatView({ agent, onBack }: Props) {
         }),
       });
 
+      // Handle error responses with friendly messages
+      if (!res.ok) {
+        let errorContent = "Sorry, something went wrong. Please try again.";
+        try {
+          const errData = await res.json();
+          if (res.status === 403) {
+            errorContent = `⭐ ${agent.name} is a Premium agent.\n\nUpgrade to Pro to unlock unlimited messages and all premium agents!\n\nUse /pro in the bot chat to upgrade.`;
+          } else if (res.status === 429) {
+            errorContent = `You've reached your daily limit of ${errData.limit} messages.\n\nUpgrade to Pro for unlimited access!\n\nUse /pro in the bot chat to upgrade.`;
+          }
+        } catch {}
+        const errMsg: ChatMessage = {
+          id: crypto.randomUUID(),
+          role: "assistant",
+          content: errorContent,
+          timestamp: Date.now(),
+          agentId: agent.id,
+        };
+        setMessages((prev) => [...prev, errMsg]);
+        setLoading(false);
+        return;
+      }
+
       const reader = res.body?.getReader();
       const decoder = new TextDecoder();
       let assistantText = "";
