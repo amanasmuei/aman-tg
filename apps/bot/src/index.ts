@@ -397,8 +397,8 @@ bot.hears("⭐ Go Pro", async (ctx) => {
   );
 });
 
-// Handle text messages — redirect to Mini App
-bot.on("message:text", async (ctx) => {
+// Handle all messages (text, photos, files, voice, etc.) — redirect to Mini App
+bot.on("message", async (ctx) => {
   const current = userAgents.get(ctx.from?.id ?? 0) || "coding";
   const agent = AGENTS.find((a) => a.id === current);
 
