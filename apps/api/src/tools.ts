@@ -16,6 +16,16 @@ export interface ToolResult {
 
 // ── Tool Definitions ────────────────────────────────
 
+// Ollama/OpenAI-compatible tool format
+export interface OllamaToolDefinition {
+  type: "function";
+  function: {
+    name: string;
+    description: string;
+    parameters: Record<string, unknown>;
+  };
+}
+
 export const TOOLS: ToolDefinition[] = [
   {
     name: "fetch_url",
@@ -48,6 +58,17 @@ export const TOOLS: ToolDefinition[] = [
     },
   },
 ];
+
+// ── Ollama-compatible format ────────────────────────
+
+export const OLLAMA_TOOLS: OllamaToolDefinition[] = TOOLS.map((t) => ({
+  type: "function" as const,
+  function: {
+    name: t.name,
+    description: t.description,
+    parameters: t.input_schema,
+  },
+}));
 
 // ── Tool Execution ──────────────────────────────────
 

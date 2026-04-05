@@ -3,6 +3,7 @@ import { streamText } from "hono/streaming";
 import Anthropic from "@anthropic-ai/sdk";
 import { AGENTS } from "@aman-tg/shared";
 import { runAgentLoop } from "../agent-loop.js";
+import { runOllamaAgentLoop } from "../ollama-loop.js";
 import {
   upsertUser,
   getUser,
@@ -205,29 +206,67 @@ app.post("/", async (c) => {
     extractAndStoreMemories(userId, trimmedMessage, agentId);
   }
 
-  const client = getClient();
-  // Pro users get Sonnet (better quality), free users get Haiku (faster)
+  // Determine provider: Pro/Team → Claude, Free → Ollama Cloud
   const userRecord = userId ? getUser(userId) : null;
   const isPro = userRecord?.plan === "pro" || userRecord?.plan === "team";
-  const model = isPro
-    ? (process.env.CLAUDE_MODEL_PRO || "claude-sonnet-4-6")
-    : (process.env.CLAUDE_MODEL || "claude-haiku-4-5-20251001");
+  const useOllama = !isPro && !!process.env.OLLAMA_API_KEY;
 
   return streamText(c, async (stream) => {
     try {
-      const fullResponse = await runAgentLoop({
-        client,
-        model,
-        systemPrompt,
-        messages,
-        maxTokens: 2048,
-        onText: async (text) => {
-          await stream.write(text);
-        },
-        onToolUse: (toolName) => {
-          console.log(`[TOOL] ${toolName} called by ${agentId} for user ${userId}`);
-        },
-      });
+      let fullResponse: string;
+
+      if (useOllama) {
+        // Free tier: Ollama Cloud (GLM-5 or configured model)
+        const ollamaModel = process.env.OLLAMA_MODEL || "glm-5:cloud";
+        console.log(`[LLM] Ollama/${ollamaModel} for user ${userId} (free tier)`);
+
+        // Convert Anthropic message format to simple format for Ollama
+        const simpleMessages = messages.map((m) => ({
+          role: m.role as "user" | "assistant",
+          content: typeof m.content === "string"
+            ? m.content
+            : Array.isArray(m.content)
+              ? m.content
+                  .filter((b): b is Anthropic.Messages.TextBlockParam => b.type === "text")
+                  .map((b) => b.text)
+                  .join("\n") || "Hello"
+              : "Hello",
+        }));
+
+        fullResponse = await runOllamaAgentLoop({
+          model: ollamaModel,
+          systemPrompt,
+          messages: simpleMessages,
+          maxTokens: 2048,
+          onText: async (text) => {
+            await stream.write(text);
+          },
+          onToolUse: (toolName) => {
+            console.log(`[TOOL] ${toolName} called by ${agentId} for user ${userId} (ollama)`);
+          },
+        });
+      } else {
+        // Pro/Team tier: Claude (or fallback if no Ollama key)
+        const client = getClient();
+        const model = isPro
+          ? (process.env.CLAUDE_MODEL_PRO || "claude-sonnet-4-6")
+          : (process.env.CLAUDE_MODEL || "claude-haiku-4-5-20251001");
+        console.log(`[LLM] Claude/${model} for user ${userId} (${isPro ? "pro" : "free-fallback"})`);
+
+        fullResponse = await runAgentLoop({
+          client,
+          model,
+          systemPrompt,
+          messages,
+          maxTokens: 2048,
+          onText: async (text) => {
+            await stream.write(text);
+          },
+          onToolUse: (toolName) => {
+            console.log(`[TOOL] ${toolName} called by ${agentId} for user ${userId}`);
+          },
+        });
+      }
 
       // Save assistant response to DB after streaming completes
       if (conversation && fullResponse) {
@@ -235,6 +274,7 @@ app.post("/", async (c) => {
       }
     } catch (err) {
       const errMsg = err instanceof Error ? err.message : "LLM error";
+      console.error(`[LLM] Error for user ${userId}:`, errMsg);
       await stream.write(`\n\n[Error: ${errMsg}]`);
     }
   });
