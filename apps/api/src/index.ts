@@ -8,6 +8,7 @@ import agentsRoute from "./routes/agents.js";
 import chatRoute from "./routes/chat.js";
 import conversationsRoute from "./routes/conversations.js";
 import usersRoute from "./routes/users.js";
+import adminRoute from "./routes/admin.js";
 import { getDb } from "./db.js";
 
 const app = new Hono();
@@ -49,6 +50,7 @@ app.route("/api/agents", agentsRoute);
 app.route("/api/chat", chatRoute);
 app.route("/api/conversations", conversationsRoute);
 app.route("/api/users", usersRoute);
+app.route("/api/admin", adminRoute);
 
 // Health check
 app.get("/health", (c) => c.json({ status: "ok", version: "0.2.0" }));

@@ -4,6 +4,8 @@ import { ChatView } from "./components/ChatView";
 import { ConversationList } from "./components/ConversationList";
 import { AgentDetail } from "./components/AgentDetail";
 import { Header } from "./components/Header";
+import { Landing } from "./components/Landing";
+import { Onboarding } from "./components/Onboarding";
 import { AGENTS } from "@aman-tg/shared";
 import type { Agent } from "@aman-tg/shared";
 
@@ -13,6 +15,7 @@ export function App() {
   const [page, setPage] = useState<Page>("home");
   const [selectedAgent, setSelectedAgent] = useState<Agent | null>(null);
   const [userPlan, setUserPlan] = useState("free");
+  const [showOnboarding, setShowOnboarding] = useState(false);
 
   useEffect(() => {
     const tg = window.Telegram?.WebApp;
@@ -21,8 +24,14 @@ export function App() {
 
     fetch(`/api/users/me?telegramId=${telegramId}`)
       .then((res) => res.json())
-      .then((data) => { if (data.plan) setUserPlan(data.plan); })
-      .catch(() => {});
+      .then((data) => {
+        if (data.plan) {
+          setUserPlan(data.plan);
+        } else {
+          setShowOnboarding(true);
+        }
+      })
+      .catch(() => { setShowOnboarding(true); });
   }, []);
 
   const handleSelectAgent = (agent: Agent) => {
@@ -45,6 +54,20 @@ export function App() {
   const handleBack = () => {
     setPage("home");
   };
+
+  const handleOnboardingComplete = (agent: Agent) => {
+    setShowOnboarding(false);
+    setSelectedAgent(agent);
+    setPage("detail");
+  };
+
+  if (!window.Telegram?.WebApp?.initData) {
+    return <Landing />;
+  }
+
+  if (showOnboarding) {
+    return <Onboarding onComplete={handleOnboardingComplete} />;
+  }
 
   return (
     <div style={{ minHeight: "100vh", display: "flex", flexDirection: "column" }}>
