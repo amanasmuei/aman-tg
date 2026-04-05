@@ -2,6 +2,7 @@ import { Hono } from "hono";
 import { streamText } from "hono/streaming";
 import Anthropic from "@anthropic-ai/sdk";
 import { AGENTS } from "@aman-tg/shared";
+import { runAgentLoop } from "../agent-loop.js";
 import {
   upsertUser,
   getUser,
@@ -212,25 +213,20 @@ app.post("/", async (c) => {
     : (process.env.CLAUDE_MODEL || "claude-haiku-4-5-20251001");
 
   return streamText(c, async (stream) => {
-    let fullResponse = "";
     try {
-      const response = await client.messages.create({
+      const fullResponse = await runAgentLoop({
+        client,
         model,
-        max_tokens: 2048,
-        system: systemPrompt,
+        systemPrompt,
         messages,
-        stream: true,
+        maxTokens: 2048,
+        onText: async (text) => {
+          await stream.write(text);
+        },
+        onToolUse: (toolName) => {
+          console.log(`[TOOL] ${toolName} called by ${agentId} for user ${userId}`);
+        },
       });
-
-      for await (const event of response) {
-        if (
-          event.type === "content_block_delta" &&
-          event.delta.type === "text_delta"
-        ) {
-          fullResponse += event.delta.text;
-          await stream.write(event.delta.text);
-        }
-      }
 
       // Save assistant response to DB after streaming completes
       if (conversation && fullResponse) {
