@@ -9,6 +9,39 @@ if (!token) {
 }
 
 const miniAppUrl = process.env.MINI_APP_URL || "https://aman-tg.vercel.app";
+const apiUrl = process.env.API_URL || "http://localhost:3000";
+
+async function chatWithAgent(
+  agentId: string,
+  message: string,
+  telegramId: number,
+  firstName: string,
+  lastName?: string,
+  username?: string,
+): Promise<string> {
+  try {
+    const res = await fetch(`${apiUrl}/api/chat`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ agentId, message, telegramId, firstName, lastName, username }),
+    });
+
+    if (res.status === 429) {
+      const data = await res.json() as { limit: number };
+      return `You've reached the daily limit of ${data.limit} messages. Upgrade to Pro for unlimited access!`;
+    }
+
+    if (!res.ok) {
+      return "Sorry, something went wrong. Please try again.";
+    }
+
+    // Read streaming response as full text
+    const text = await res.text();
+    return text || "I couldn't generate a response. Please try again.";
+  } catch {
+    return "Sorry, I'm having trouble connecting. Please try again later.";
+  }
+}
 
 const bot = new Bot(token);
 
@@ -75,24 +108,41 @@ for (const agent of AGENTS) {
     await ctx.reply(
       `${agent.icon} Switched to *${agent.name}*\n\n` +
       `_${agent.description}_\n\n` +
-      `Send me a message to start chatting!`,
+      `Send me a message to start chatting! Your conversations are saved.`,
       { parse_mode: "Markdown" }
     );
   });
 }
 
-// Handle text messages — chat with selected agent
+// Handle text messages — chat with selected agent via API
 bot.on("message:text", async (ctx) => {
   const userMessage = ctx.message.text;
+  const user = ctx.from;
+  if (!user) return;
 
-  // Default agent response (placeholder — will be replaced with LLM call)
-  await ctx.reply(
-    `I received your message. The LLM integration will be connected to the API server.\n\n` +
-    `For now, open the mini app for the full chat experience.`,
-    {
-      reply_markup: new InlineKeyboard().webApp("Open aman", miniAppUrl),
-    }
+  // Default agent — could look up user's preference from API later
+  const agentId = "coding";
+
+  await ctx.replyWithChatAction("typing");
+
+  const response = await chatWithAgent(
+    agentId,
+    userMessage,
+    user.id,
+    user.first_name,
+    user.last_name,
+    user.username,
   );
+
+  // Split long messages (Telegram limit: 4096 chars)
+  if (response.length > 4000) {
+    const chunks = response.match(/[\s\S]{1,4000}/g) || [response];
+    for (const chunk of chunks) {
+      await ctx.reply(chunk);
+    }
+  } else {
+    await ctx.reply(response);
+  }
 });
 
 // Stars payment handling

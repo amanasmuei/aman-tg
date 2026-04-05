@@ -1,0 +1,230 @@
+import Database from "better-sqlite3";
+import { randomUUID } from "node:crypto";
+import path from "node:path";
+import fs from "node:fs";
+
+const DB_DIR = process.env.DATA_DIR || path.join(process.cwd(), "data");
+const DB_PATH = process.env.DB_PATH || path.join(DB_DIR, "aman.db");
+
+let _db: Database.Database | null = null;
+
+export function getDb(): Database.Database {
+  if (_db) return _db;
+
+  fs.mkdirSync(path.dirname(DB_PATH), { recursive: true });
+  _db = new Database(DB_PATH);
+  _db.pragma("journal_mode = WAL");
+  _db.pragma("busy_timeout = 5000");
+  _db.pragma("foreign_keys = ON");
+
+  _db.exec(`
+    CREATE TABLE IF NOT EXISTS users (
+      telegram_id INTEGER PRIMARY KEY,
+      first_name TEXT NOT NULL,
+      last_name TEXT,
+      username TEXT,
+      language_code TEXT,
+      selected_agent_id TEXT NOT NULL DEFAULT 'coding',
+      plan TEXT NOT NULL DEFAULT 'free',
+      messages_today INTEGER NOT NULL DEFAULT 0,
+      messages_date TEXT NOT NULL DEFAULT '',
+      created_at INTEGER NOT NULL,
+      updated_at INTEGER NOT NULL
+    );
+
+    CREATE TABLE IF NOT EXISTS conversations (
+      id TEXT PRIMARY KEY,
+      telegram_id INTEGER NOT NULL,
+      agent_id TEXT NOT NULL,
+      title TEXT NOT NULL DEFAULT '',
+      created_at INTEGER NOT NULL,
+      updated_at INTEGER NOT NULL,
+      FOREIGN KEY (telegram_id) REFERENCES users(telegram_id)
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_conversations_user_agent
+      ON conversations(telegram_id, agent_id);
+
+    CREATE TABLE IF NOT EXISTS messages (
+      id TEXT PRIMARY KEY,
+      conversation_id TEXT NOT NULL,
+      role TEXT NOT NULL,
+      content TEXT NOT NULL,
+      created_at INTEGER NOT NULL,
+      FOREIGN KEY (conversation_id) REFERENCES conversations(id)
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_messages_conversation
+      ON messages(conversation_id, created_at);
+  `);
+
+  return _db;
+}
+
+// ── Users ───────────────────────────────────────────
+
+export interface DbUser {
+  telegram_id: number;
+  first_name: string;
+  last_name: string | null;
+  username: string | null;
+  language_code: string | null;
+  selected_agent_id: string;
+  plan: string;
+  messages_today: number;
+  messages_date: string;
+  created_at: number;
+  updated_at: number;
+}
+
+export function upsertUser(
+  telegramId: number,
+  firstName: string,
+  lastName?: string,
+  username?: string,
+  languageCode?: string,
+): DbUser {
+  const db = getDb();
+  const now = Date.now();
+
+  db.prepare(`
+    INSERT INTO users (telegram_id, first_name, last_name, username, language_code, created_at, updated_at)
+    VALUES (?, ?, ?, ?, ?, ?, ?)
+    ON CONFLICT(telegram_id) DO UPDATE SET
+      first_name = excluded.first_name,
+      last_name = excluded.last_name,
+      username = excluded.username,
+      language_code = excluded.language_code,
+      updated_at = ?
+  `).run(telegramId, firstName, lastName || null, username || null, languageCode || null, now, now, now);
+
+  return db.prepare("SELECT * FROM users WHERE telegram_id = ?").get(telegramId) as DbUser;
+}
+
+export function getUser(telegramId: number): DbUser | null {
+  const db = getDb();
+  return (db.prepare("SELECT * FROM users WHERE telegram_id = ?").get(telegramId) as DbUser) || null;
+}
+
+export function updateSelectedAgent(telegramId: number, agentId: string): void {
+  const db = getDb();
+  db.prepare("UPDATE users SET selected_agent_id = ?, updated_at = ? WHERE telegram_id = ?")
+    .run(agentId, Date.now(), telegramId);
+}
+
+export function updateUserPlan(telegramId: number, plan: string): void {
+  const db = getDb();
+  db.prepare("UPDATE users SET plan = ?, updated_at = ? WHERE telegram_id = ?")
+    .run(plan, Date.now(), telegramId);
+}
+
+// ── Usage Limits ────────────────────────────────────
+
+const FREE_DAILY_LIMIT = 30;
+
+export function checkAndIncrementUsage(
+  telegramId: number,
+): { allowed: boolean; used: number; limit: number; plan: string } {
+  const db = getDb();
+  const user = getUser(telegramId);
+  if (!user) return { allowed: false, used: 0, limit: 0, plan: "free" };
+
+  if (user.plan === "pro" || user.plan === "team") {
+    return { allowed: true, used: user.messages_today, limit: -1, plan: user.plan };
+  }
+
+  const today = new Date().toISOString().slice(0, 10);
+
+  if (user.messages_date !== today) {
+    db.prepare("UPDATE users SET messages_today = 0, messages_date = ? WHERE telegram_id = ?")
+      .run(today, telegramId);
+    user.messages_today = 0;
+  }
+
+  if (user.messages_today >= FREE_DAILY_LIMIT) {
+    return { allowed: false, used: user.messages_today, limit: FREE_DAILY_LIMIT, plan: "free" };
+  }
+
+  db.prepare("UPDATE users SET messages_today = messages_today + 1 WHERE telegram_id = ?")
+    .run(telegramId);
+
+  return { allowed: true, used: user.messages_today + 1, limit: FREE_DAILY_LIMIT, plan: "free" };
+}
+
+// ── Conversations ───────────────────────────────────
+
+export interface DbConversation {
+  id: string;
+  telegram_id: number;
+  agent_id: string;
+  title: string;
+  created_at: number;
+  updated_at: number;
+}
+
+export function getOrCreateConversation(telegramId: number, agentId: string): DbConversation {
+  const db = getDb();
+
+  const existing = db.prepare(
+    "SELECT * FROM conversations WHERE telegram_id = ? AND agent_id = ? ORDER BY updated_at DESC LIMIT 1",
+  ).get(telegramId, agentId) as DbConversation | undefined;
+
+  if (existing) return existing;
+
+  const now = Date.now();
+  const id = randomUUID();
+  db.prepare(
+    "INSERT INTO conversations (id, telegram_id, agent_id, title, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)",
+  ).run(id, telegramId, agentId, "", now, now);
+
+  return db.prepare("SELECT * FROM conversations WHERE id = ?").get(id) as DbConversation;
+}
+
+export function listConversations(telegramId: number): DbConversation[] {
+  const db = getDb();
+  return db.prepare(
+    "SELECT * FROM conversations WHERE telegram_id = ? ORDER BY updated_at DESC LIMIT 50",
+  ).all(telegramId) as DbConversation[];
+}
+
+// ── Messages ────────────────────────────────────────
+
+export interface DbMessage {
+  id: string;
+  conversation_id: string;
+  role: string;
+  content: string;
+  created_at: number;
+}
+
+export function saveMessage(
+  conversationId: string,
+  role: "user" | "assistant",
+  content: string,
+): DbMessage {
+  const db = getDb();
+  const id = randomUUID();
+  const now = Date.now();
+
+  db.prepare(
+    "INSERT INTO messages (id, conversation_id, role, content, created_at) VALUES (?, ?, ?, ?, ?)",
+  ).run(id, conversationId, role, content, now);
+
+  db.prepare("UPDATE conversations SET updated_at = ? WHERE id = ?").run(now, conversationId);
+
+  const conv = db.prepare("SELECT title FROM conversations WHERE id = ?").get(conversationId) as { title: string };
+  if (!conv.title && role === "user") {
+    const title = content.slice(0, 80) + (content.length > 80 ? "..." : "");
+    db.prepare("UPDATE conversations SET title = ? WHERE id = ?").run(title, conversationId);
+  }
+
+  return { id, conversation_id: conversationId, role, content, created_at: now };
+}
+
+export function getMessages(conversationId: string, limit = 20): DbMessage[] {
+  const db = getDb();
+  const rows = db.prepare(
+    "SELECT * FROM messages WHERE conversation_id = ? ORDER BY created_at DESC LIMIT ?",
+  ).all(conversationId, limit) as DbMessage[];
+  return rows.reverse();
+}

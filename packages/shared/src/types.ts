@@ -24,11 +24,22 @@ export interface UserPreferences {
   createdAt: number;
 }
 
-export interface AgentSession {
+export interface Conversation {
   id: string;
   telegramId: number;
   agentId: string;
-  messages: ChatMessage[];
+  title: string;
   createdAt: number;
   updatedAt: number;
+}
+
+export interface ConversationWithMessages extends Conversation {
+  messages: ChatMessage[];
+}
+
+export interface UsageLimits {
+  messagesUsed: number;
+  messagesLimit: number;
+  plan: "free" | "pro" | "team";
+  resetsAt: number;
 }

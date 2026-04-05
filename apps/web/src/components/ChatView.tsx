@@ -17,6 +17,24 @@ export function ChatView({ agent, onBack }: Props) {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
+  // Load conversation history on mount
+  useEffect(() => {
+    const tg = window.Telegram?.WebApp;
+    const telegramId = tg?.initDataUnsafe?.user?.id;
+    if (!telegramId) return;
+
+    fetch(`/api/conversations/${agent.id}?telegramId=${telegramId}`)
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.messages && data.messages.length > 0) {
+          setMessages(data.messages);
+        }
+      })
+      .catch(() => {
+        // Silently fail — start fresh if history unavailable
+      });
+  }, [agent.id]);
+
   const sendMessage = async () => {
     const text = input.trim();
     if (!text || loading) return;
@@ -34,7 +52,8 @@ export function ChatView({ agent, onBack }: Props) {
     setLoading(true);
 
     try {
-      const initData = window.Telegram?.WebApp?.initData || "";
+      const tg = window.Telegram?.WebApp;
+      const initData = tg?.initData || "";
       const res = await fetch("/api/chat", {
         method: "POST",
         headers: {
@@ -44,7 +63,10 @@ export function ChatView({ agent, onBack }: Props) {
         body: JSON.stringify({
           agentId: agent.id,
           message: text,
-          history: messages.map((m) => ({ role: m.role, content: m.content })),
+          telegramId: tg?.initDataUnsafe?.user?.id,
+          firstName: tg?.initDataUnsafe?.user?.first_name,
+          lastName: tg?.initDataUnsafe?.user?.last_name,
+          username: tg?.initDataUnsafe?.user?.username,
         }),
       });
 

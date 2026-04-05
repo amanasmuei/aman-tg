@@ -6,6 +6,9 @@ import { logger } from "hono/logger";
 import { validateInitData } from "./auth.js";
 import agentsRoute from "./routes/agents.js";
 import chatRoute from "./routes/chat.js";
+import conversationsRoute from "./routes/conversations.js";
+import usersRoute from "./routes/users.js";
+import { getDb } from "./db.js";
 
 const app = new Hono();
 
@@ -38,12 +41,17 @@ app.use("/api/*", async (c, next) => {
   return next();
 });
 
+// Initialize database
+getDb();
+
 // Routes
 app.route("/api/agents", agentsRoute);
 app.route("/api/chat", chatRoute);
+app.route("/api/conversations", conversationsRoute);
+app.route("/api/users", usersRoute);
 
 // Health check
-app.get("/health", (c) => c.json({ status: "ok", version: "0.1.0" }));
+app.get("/health", (c) => c.json({ status: "ok", version: "0.2.0" }));
 
 // Start
 const port = parseInt(process.env.PORT || "3000", 10);

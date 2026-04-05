@@ -1,6 +1,16 @@
 interface TelegramWebApp {
   initData: string;
-  initDataUnsafe: Record<string, unknown>;
+  initDataUnsafe: {
+    user?: {
+      id: number;
+      first_name: string;
+      last_name?: string;
+      username?: string;
+      language_code?: string;
+      is_premium?: boolean;
+    };
+    [key: string]: unknown;
+  };
   ready: () => void;
   expand: () => void;
   close: () => void;
