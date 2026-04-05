@@ -3,6 +3,23 @@ import type { Agent, ChatMessage } from "@aman-tg/shared";
 import { Markdown } from "./Markdown";
 import { t, getLanguageDirective } from "../lib/i18n";
 
+const QUICK_PROMPTS: Record<string, string[]> = {
+  coding: ["Fix a bug", "Write a function", "Explain this code"],
+  daily: ["Plan my day", "Create a to-do list", "Set priorities"],
+  study: ["Explain simply", "Quiz me", "Help me understand"],
+  creative: ["Brainstorm ideas", "Write a story", "Name my project"],
+  bizhelper: ["Draft an email", "Business strategy", "Write a proposal"],
+  debug: ["App is crashing", "Performance issue", "Strange error"],
+  fitness: ["Workout plan", "Meal ideas", "Sleep tips"],
+  finance: ["Budget help", "Saving tips", "Investment basics"],
+  bahasa: ["Ajar tatabahasa", "Bantu karangan", "Translate this"],
+  recipe: ["Quick dinner", "Nasi lemak", "Meal prep ideas"],
+  travel: ["Plan a trip", "Budget travel", "Hidden gems"],
+  resume: ["Review my resume", "Cover letter", "LinkedIn tips"],
+  quran: ["Tafsir surah", "Dua harian", "Tajweed basics"],
+  default: ["Help me with something", "Tell me about yourself", "What can you do?"],
+};
+
 interface Attachment {
   type: "image" | "file";
   name: string;
@@ -24,6 +41,8 @@ export function ChatView({ agent, onBack }: Props) {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [showScrollBtn, setShowScrollBtn] = useState(false);
+  const chatContainerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -47,6 +66,13 @@ export function ChatView({ agent, onBack }: Props) {
 
     return () => controller.abort();
   }, [agent.id]);
+
+  const handleScroll = () => {
+    const el = chatContainerRef.current;
+    if (!el) return;
+    const isNearBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 100;
+    setShowScrollBtn(!isNearBottom);
+  };
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -235,7 +261,7 @@ export function ChatView({ agent, onBack }: Props) {
       </div>
 
       {/* Messages */}
-      <div className="flex-1 overflow-y-auto px-4 py-4 space-y-3">
+      <div ref={chatContainerRef} onScroll={handleScroll} className="flex-1 overflow-y-auto px-4 py-4 space-y-3 relative">
         {messages.length === 0 && (
           <div className="text-center py-12">
             <div className="text-4xl mb-3">{agent.icon}</div>
@@ -243,9 +269,21 @@ export function ChatView({ agent, onBack }: Props) {
             <p className="text-sm" style={{ color: "var(--tg-theme-hint-color)" }}>
               {agent.description}
             </p>
-            <p className="text-xs mt-3" style={{ color: "var(--tg-theme-hint-color)" }}>
+            <p className="text-xs mt-3 mb-4" style={{ color: "var(--tg-theme-hint-color)" }}>
               {t("sendOrAttach")}
             </p>
+            <div className="flex flex-wrap gap-2 justify-center">
+              {(QUICK_PROMPTS[agent.id] || QUICK_PROMPTS.default).map((prompt) => (
+                <button
+                  key={prompt}
+                  onClick={() => { setInput(prompt); inputRef.current?.focus(); }}
+                  className="px-3 py-1.5 rounded-full text-xs transition-transform active:scale-95"
+                  style={{ background: "var(--tg-theme-secondary-bg-color)", color: "var(--tg-theme-hint-color)" }}
+                >
+                  {prompt}
+                </button>
+              ))}
+            </div>
           </div>
         )}
         {messages.map((msg) => (
@@ -274,13 +312,39 @@ export function ChatView({ agent, onBack }: Props) {
                 ) : null
               )}
               {msg.content && (
-                <div className="text-right mt-1" style={{ fontSize: "0.6rem", opacity: 0.5 }}>
-                  {new Date(msg.timestamp).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                <div className="flex items-center justify-end gap-2 mt-1">
+                  {msg.role === "assistant" && (
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        navigator.clipboard.writeText(msg.content);
+                        const btn = e.currentTarget;
+                        btn.textContent = "✓";
+                        setTimeout(() => { btn.textContent = "Copy"; }, 1500);
+                      }}
+                      className="px-1.5 py-0.5 rounded"
+                      style={{ fontSize: "0.6rem", opacity: 0.4, background: "rgba(0,0,0,0.2)" }}
+                    >
+                      Copy
+                    </button>
+                  )}
+                  <span style={{ fontSize: "0.6rem", opacity: 0.5 }}>
+                    {new Date(msg.timestamp).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                  </span>
                 </div>
               )}
             </div>
           </div>
         ))}
+        {showScrollBtn && (
+          <button
+            onClick={() => messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })}
+            className="fixed bottom-24 right-4 w-8 h-8 rounded-full flex items-center justify-center text-sm shadow-lg z-10"
+            style={{ background: "var(--tg-theme-button-color)", color: "var(--tg-theme-button-text-color)" }}
+          >
+            ↓
+          </button>
+        )}
         <div ref={messagesEndRef} />
       </div>
 

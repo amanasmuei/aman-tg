@@ -126,6 +126,9 @@ app.post("/", async (c) => {
     }));
   }
 
+  // Track if first message for welcome instruction
+  const isFirstMessage = history.length === 0;
+
   // Save user message to DB (with attachment info if present)
   if (conversation) {
     const savedContent = attachment
@@ -179,6 +182,11 @@ app.post("/", async (c) => {
   // Tone and language
   systemPrompt += `\n\nIMPORTANT: Always respond with a polite, humble, and respectful tone. Be warm and approachable. Use "please", "thank you", and considerate language. Never be arrogant or dismissive.`;
 
+  // First message — warm welcome
+  if (isFirstMessage) {
+    systemPrompt += `\n\nThis is your FIRST interaction with this user. Start with a warm, brief welcome. Introduce yourself in 1-2 sentences, then address their message. Don't list everything you can do — just be helpful and friendly.`;
+  }
+
   const languageHint = (body.languageHint || "").slice(0, 200);
   if (languageHint) {
     systemPrompt += `\n\n${languageHint}`;
@@ -196,7 +204,12 @@ app.post("/", async (c) => {
   }
 
   const client = getClient();
-  const model = process.env.CLAUDE_MODEL || "claude-sonnet-4-6";
+  // Pro users get Sonnet (better quality), free users get Haiku (faster)
+  const userRecord = userId ? getUser(userId) : null;
+  const isPro = userRecord?.plan === "pro" || userRecord?.plan === "team";
+  const model = isPro
+    ? (process.env.CLAUDE_MODEL_PRO || "claude-sonnet-4-6")
+    : (process.env.CLAUDE_MODEL || "claude-haiku-4-5-20251001");
 
   return streamText(c, async (stream) => {
     let fullResponse = "";

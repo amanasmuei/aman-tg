@@ -1,6 +1,7 @@
 import "dotenv/config";
 import { Bot, InlineKeyboard, Keyboard } from "grammy";
 import { AGENTS } from "@aman-tg/shared";
+import { sendDailyNotifications } from "./notifications.js";
 
 const token = process.env.BOT_TOKEN;
 if (!token) {
@@ -501,6 +502,22 @@ process.on("SIGINT", () => {
   console.log("SIGINT received, shutting down...");
   bot.stop();
 });
+
+// Daily notification — runs once per day at 6pm local time
+let lastNotificationDate = "";
+setInterval(async () => {
+  const now = new Date();
+  const today = now.toISOString().slice(0, 10);
+  const hour = now.getHours();
+
+  // Send at 6pm, once per day
+  if (hour === 18 && lastNotificationDate !== today) {
+    lastNotificationDate = today;
+    console.log("[NOTIFICATIONS] Sending daily notifications...");
+    await sendDailyNotifications(bot, apiUrl);
+    console.log("[NOTIFICATIONS] Done.");
+  }
+}, 60 * 1000); // Check every minute
 
 // Start
 console.log("Starting aman bot...");
