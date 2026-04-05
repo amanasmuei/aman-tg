@@ -12,6 +12,7 @@ import usersRoute from "./routes/users.js";
 import adminRoute from "./routes/admin.js";
 import referralsRoute from "./routes/referrals.js";
 import { getDb } from "./db.js";
+import { loadRules } from "./guardrails.js";
 
 const app = new Hono();
 
@@ -40,8 +41,9 @@ app.use("/api/*", async (c, next) => {
   return next();
 });
 
-// Initialize database
+// Initialize database and guardrails
 getDb();
+loadRules();
 
 // Routes
 app.route("/api/agents", agentsRoute);

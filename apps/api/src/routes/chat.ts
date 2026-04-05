@@ -14,6 +14,7 @@ import {
   checkAndIncrementUsage,
 } from "../db.js";
 import { loadMemoryContext, extractAndStoreMemories } from "../memory.js";
+import { getGuardrailsPrompt } from "../guardrails.js";
 
 const app = new Hono();
 
@@ -205,6 +206,12 @@ app.post("/", async (c) => {
   const safeLanguageHint = (languageHint || "").slice(0, 200);
   if (safeLanguageHint) {
     systemPrompt += `\n\n${safeLanguageHint}`;
+  }
+
+  // Inject guardrails into system prompt
+  const guardrails = getGuardrailsPrompt();
+  if (guardrails) {
+    systemPrompt += guardrails;
   }
 
   // Inject persistent memories (cross-agent, cross-session)

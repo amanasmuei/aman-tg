@@ -4,6 +4,7 @@
  */
 
 import { addTodo, listTodos, completeTodo, deleteTodo, type DbTodo } from "./db.js";
+import { checkToolCall } from "./guardrails.js";
 
 export interface ToolDefinition {
   name: string;
@@ -157,6 +158,12 @@ export async function executeTool(
   input: Record<string, unknown>,
   ctx?: ToolContext,
 ): Promise<ToolResult> {
+  // Guardrail check before execution
+  const blocked = checkToolCall(name, input);
+  if (blocked) {
+    return { content: blocked, is_error: true };
+  }
+
   switch (name) {
     case "fetch_url":
       return fetchUrl(input.url as string);
