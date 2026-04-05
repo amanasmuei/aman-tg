@@ -35,31 +35,40 @@ export function Header({ onReset }: { onReset?: () => void } = {}) {
 
   const isLow = usage && usage.plan === "free" && usage.messagesLimit > 0 && usage.messagesUsed >= usage.messagesLimit - 5;
 
-  const handleReset = async () => {
+  const handleReset = () => {
     const tg = window.Telegram?.WebApp;
     const telegramId = tg?.initDataUnsafe?.user?.id;
     if (!telegramId) return;
 
-    if (!confirm("Are you sure you want to reset all your data? This will delete all conversations, tasks, and memories. This cannot be undone.")) return;
+    tg.showConfirm(
+      "Are you sure you want to reset all your data? This will delete all conversations, tasks, and memories. This cannot be undone.",
+      async (confirmed: boolean) => {
+        if (!confirmed) return;
 
-    setResetting(true);
-    try {
-      const res = await fetch("/api/users/me/data", {
-        method: "DELETE",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ telegramId }),
-      });
-      if (res.ok) {
-        const data = await res.json();
-        alert(`Data cleared: ${data.cleared.conversations} conversations, ${data.cleared.messages} messages, ${data.cleared.todos} tasks, ${data.cleared.memories} memories.`);
-        onReset?.();
-        window.location.reload();
+        setResetting(true);
+        try {
+          const res = await fetch("/api/users/me/data", {
+            method: "DELETE",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ telegramId }),
+          });
+          if (res.ok) {
+            const data = await res.json();
+            tg.showAlert(
+              `Data cleared: ${data.cleared.conversations} conversations, ${data.cleared.messages} messages, ${data.cleared.todos} tasks, ${data.cleared.memories} memories.`,
+              () => {
+                onReset?.();
+                window.location.reload();
+              }
+            );
+          }
+        } catch {
+          tg.showAlert("Failed to reset data. Please try again.");
+        } finally {
+          setResetting(false);
+        }
       }
-    } catch {
-      alert("Failed to reset data. Please try again.");
-    } finally {
-      setResetting(false);
-    }
+    );
   };
 
   return (
