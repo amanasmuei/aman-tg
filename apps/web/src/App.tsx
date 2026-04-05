@@ -17,6 +17,7 @@ export function App() {
   detectLocale();
   const [page, setPage] = useState<Page>("home");
   const [selectedAgent, setSelectedAgent] = useState<Agent | null>(null);
+  const [selectedConversationId, setSelectedConversationId] = useState<string | undefined>();
   const [userPlan, setUserPlan] = useState("free");
   const [showOnboarding, setShowOnboarding] = useState(false);
 
@@ -39,23 +40,27 @@ export function App() {
 
   const handleSelectAgent = (agent: Agent) => {
     setSelectedAgent(agent);
+    setSelectedConversationId(undefined);
     setPage("detail");
   };
 
   const handleStartChat = () => {
+    setSelectedConversationId(undefined);
     setPage("chat");
   };
 
-  const handleSelectConversation = (agentId: string) => {
+  const handleSelectConversation = (agentId: string, conversationId: string) => {
     const agent = AGENTS.find((a) => a.id === agentId);
     if (agent) {
       setSelectedAgent(agent);
+      setSelectedConversationId(conversationId);
       setPage("chat");
     }
   };
 
   const handleBack = () => {
     setSelectedAgent(null);
+    setSelectedConversationId(undefined);
     setPage("home");
   };
 
@@ -117,7 +122,7 @@ export function App() {
         </>
       )}
       {page === "chat" && selectedAgent && (
-        <ChatView agent={selectedAgent} onBack={handleBack} />
+        <ChatView agent={selectedAgent} onBack={handleBack} conversationId={selectedConversationId} />
       )}
       {page === "detail" && selectedAgent && (
         <AgentDetail

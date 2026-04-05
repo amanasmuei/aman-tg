@@ -1,5 +1,5 @@
 import { Hono } from "hono";
-import { getConversation, createNewConversation, getMessages, listConversations } from "../db.js";
+import { getConversation, getConversationById, createNewConversation, getMessages, listConversations } from "../db.js";
 
 const app = new Hono();
 
@@ -18,7 +18,11 @@ app.get("/:agentId", (c) => {
   const agentId = c.req.param("agentId");
   if (!telegramId) return c.json({ error: "telegramId required" }, 400);
 
-  const conversation = getConversation(telegramId, agentId);
+  // Load specific conversation if ID provided, otherwise latest for this agent
+  const convId = c.req.query("conversationId");
+  const conversation = convId
+    ? getConversationById(convId)
+    : getConversation(telegramId, agentId);
   if (!conversation) {
     return c.json({ conversation: null, messages: [] });
   }

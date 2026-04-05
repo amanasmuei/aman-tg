@@ -31,9 +31,10 @@ interface Attachment {
 interface Props {
   agent: Agent;
   onBack: () => void;
+  conversationId?: string;
 }
 
-export function ChatView({ agent, onBack }: Props) {
+export function ChatView({ agent, onBack, conversationId }: Props) {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
@@ -56,7 +57,10 @@ export function ChatView({ agent, onBack }: Props) {
     if (!telegramId) return;
 
     const controller = new AbortController();
-    fetch(`/api/conversations/${agent.id}?telegramId=${telegramId}`, { signal: controller.signal })
+    const historyUrl = conversationId
+      ? `/api/conversations/${agent.id}?telegramId=${telegramId}&conversationId=${conversationId}`
+      : `/api/conversations/${agent.id}?telegramId=${telegramId}`;
+    fetch(historyUrl, { signal: controller.signal })
       .then((res) => res.json())
       .then((data) => {
         if (data.messages && data.messages.length > 0) {

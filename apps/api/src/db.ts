@@ -185,6 +185,12 @@ export interface DbConversation {
   updated_at: number;
 }
 
+export function getConversationById(conversationId: string): DbConversation | null {
+  const db = getDb();
+  const row = db.prepare("SELECT * FROM conversations WHERE id = ?").get(conversationId) as DbConversation | undefined;
+  return row || null;
+}
+
 export function getConversation(telegramId: number, agentId: string): DbConversation | null {
   const db = getDb();
   const row = db.prepare(
