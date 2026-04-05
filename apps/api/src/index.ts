@@ -3,6 +3,7 @@ import { serve } from "@hono/node-server";
 import { Hono } from "hono";
 import { cors } from "hono/cors";
 import { logger } from "hono/logger";
+import { bodyLimit } from "hono/body-limit";
 import { validateInitData } from "./auth.js";
 import agentsRoute from "./routes/agents.js";
 import chatRoute from "./routes/chat.js";
@@ -16,18 +17,16 @@ const app = new Hono();
 // Middleware
 app.use("*", logger());
 app.use("*", cors({
-  origin: "*", // In production, restrict to your Mini App domain
+  origin: process.env.ALLOWED_ORIGINS?.split(",") || "*",
 }));
+
+// Request body size limit — prevents DoS via large payloads
+app.use("/api/*", bodyLimit({ maxSize: 15 * 1024 * 1024 })); // 15MB max (for base64 images)
 
 // Auth middleware for protected routes
 app.use("/api/*", async (c, next) => {
   const initData = c.req.header("x-telegram-init-data");
   const botToken = process.env.BOT_TOKEN;
-
-  // Skip auth in development
-  if (process.env.NODE_ENV === "development") {
-    return next();
-  }
 
   // If initData is provided, validate it
   if (initData && botToken) {
@@ -37,8 +36,6 @@ app.use("/api/*", async (c, next) => {
     }
   }
 
-  // Allow requests through — Mini App context may not always have initData
-  // TODO: enforce strict auth once Telegram WebApp SDK is fully integrated
   return next();
 });
 

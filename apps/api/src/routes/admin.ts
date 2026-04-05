@@ -3,12 +3,18 @@ import { getDb } from "../db.js";
 
 const app = new Hono();
 
-// GET /admin/stats — dashboard analytics
-app.get("/stats", (c) => {
+// Admin auth middleware — all admin routes require ADMIN_TOKEN
+app.use("*", async (c, next) => {
   const adminToken = process.env.ADMIN_TOKEN;
+  // If ADMIN_TOKEN is set, enforce it. If not set, allow (dev convenience)
   if (adminToken && c.req.header("x-admin-token") !== adminToken) {
     return c.json({ error: "Unauthorized" }, 401);
   }
+  return next();
+});
+
+// GET /admin/stats — dashboard analytics
+app.get("/stats", (c) => {
 
   const db = getDb();
   const now = Date.now();
@@ -71,11 +77,6 @@ app.get("/stats", (c) => {
 
 // GET /admin/users — list all users with activity
 app.get("/users", (c) => {
-  const adminToken = process.env.ADMIN_TOKEN;
-  if (adminToken && c.req.header("x-admin-token") !== adminToken) {
-    return c.json({ error: "Unauthorized" }, 401);
-  }
-
   const db = getDb();
   const today = new Date().toISOString().slice(0, 10);
 

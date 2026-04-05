@@ -23,11 +23,15 @@ async function chatWithAgent(
   username?: string,
 ): Promise<string> {
   try {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 30000); // 30s timeout
     const res = await fetch(`${apiUrl}/api/chat`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ agentId, message, telegramId, firstName, lastName, username }),
+      signal: controller.signal,
     });
+    clearTimeout(timeout);
 
     if (res.status === 429) {
       const data = await res.json() as { limit: number };
@@ -203,6 +207,12 @@ bot.callbackQuery("buy_pro_250", async (ctx) => {
 
 // Payment handling
 bot.on("pre_checkout_query", async (ctx) => {
+  const payload = ctx.preCheckoutQuery.invoice_payload;
+  const validPayloads = ["pro_1month", "pro_3months"];
+  if (!validPayloads.includes(payload)) {
+    await ctx.answerPreCheckoutQuery(false, { error_message: "Invalid purchase" });
+    return;
+  }
   await ctx.answerPreCheckoutQuery(true);
 });
 
@@ -211,18 +221,18 @@ bot.on("message:successful_payment", async (ctx) => {
   const user = ctx.from;
   if (!user) return;
 
-  // Upgrade user plan via API
   try {
     await fetch(`${apiUrl}/api/users/me/agent`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ telegramId: user.id, plan: "pro" }),
     });
-  } catch {}
+  } catch (err) {
+    console.error("[PAYMENT] Failed to update user agent:", err);
+  }
 
-  // Also call a dedicated upgrade endpoint
   try {
-    await fetch(`${apiUrl}/api/users/upgrade`, {
+    const upgradeRes = await fetch(`${apiUrl}/api/users/upgrade`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -233,7 +243,14 @@ bot.on("message:successful_payment", async (ctx) => {
         totalAmount: payment.total_amount,
       }),
     });
-  } catch {}
+    if (!upgradeRes.ok) {
+      console.error("[PAYMENT] Upgrade API returned:", upgradeRes.status);
+    }
+  } catch (err) {
+    console.error("[PAYMENT] Failed to call upgrade API:", err);
+  }
+
+  console.log(`[PAYMENT] Success: user=${user.id} charge=${payment.telegram_payment_charge_id} amount=${payment.total_amount}`);
 
   await ctx.reply(
     `🎉 *Welcome to aman Pro!*\n\n` +
@@ -294,6 +311,7 @@ for (const agent of AGENTS) {
   bot.callbackQuery(`switch_${agent.id}`, async (ctx) => {
     await ctx.answerCallbackQuery(`Switched to ${agent.name}`);
     const user = ctx.from;
+    if (!user) return;
     userAgents.set(user.id, agent.id);
     await ctx.reply(
       `${agent.icon} Switched to *${agent.name}*!\n\n_${agent.description}_\n\nSend me a message to start chatting.`,
@@ -305,6 +323,7 @@ for (const agent of AGENTS) {
   bot.callbackQuery(`select_${agent.id}`, async (ctx) => {
     await ctx.answerCallbackQuery(`Switched to ${agent.name}`);
     const user = ctx.from;
+    if (!user) return;
     userAgents.set(user.id, agent.id);
     await ctx.reply(
       `${agent.icon} Switched to *${agent.name}*!\n\nSend me a message to start chatting.`,
@@ -398,6 +417,9 @@ bot.hears("⭐ Go Pro", async (ctx) => {
 
 // Handle all messages (text, photos, files, voice, etc.) — redirect to Mini App
 bot.on("message", async (ctx) => {
+  // Only respond in private chats
+  if (ctx.chat.type !== "private") return;
+
   const current = userAgents.get(ctx.from?.id ?? 0) || "coding";
   const agent = AGENTS.find((a) => a.id === current);
 
@@ -439,6 +461,16 @@ bot.command("agents", async (ctx) => {
 // Error handling
 bot.catch((err) => {
   console.error("Bot error:", err);
+});
+
+// Graceful shutdown
+process.on("SIGTERM", () => {
+  console.log("SIGTERM received, shutting down...");
+  bot.stop();
+});
+process.on("SIGINT", () => {
+  console.log("SIGINT received, shutting down...");
+  bot.stop();
 });
 
 // Start

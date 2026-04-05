@@ -52,6 +52,7 @@ export function App() {
   };
 
   const handleBack = () => {
+    setSelectedAgent(null);
     setPage("home");
   };
 

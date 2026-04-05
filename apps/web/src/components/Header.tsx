@@ -14,7 +14,8 @@ export function Header() {
     const telegramId = tg?.initDataUnsafe?.user?.id;
     if (!telegramId) return;
 
-    fetch(`/api/users/me?telegramId=${telegramId}`)
+    const controller = new AbortController();
+    fetch(`/api/users/me?telegramId=${telegramId}`, { signal: controller.signal })
       .then((res) => res.json())
       .then((data) => {
         if (data.telegramId) {
@@ -26,6 +27,8 @@ export function Header() {
         }
       })
       .catch(() => {});
+
+    return () => controller.abort();
   }, []);
 
   const isLow = usage && usage.plan === "free" && usage.messagesLimit > 0 && usage.messagesUsed >= usage.messagesLimit - 5;

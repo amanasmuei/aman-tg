@@ -135,20 +135,30 @@ export function checkAndIncrementUsage(
 
   const today = new Date().toISOString().slice(0, 10);
 
-  if (user.messages_date !== today) {
-    db.prepare("UPDATE users SET messages_today = 0, messages_date = ? WHERE telegram_id = ?")
-      .run(today, telegramId);
-    user.messages_today = 0;
+  // Atomic: reset if new day AND increment, only if under limit
+  // This prevents race conditions with concurrent requests
+  const result = db.prepare(`
+    UPDATE users SET
+      messages_today = CASE WHEN messages_date = ? THEN messages_today + 1 ELSE 1 END,
+      messages_date = ?
+    WHERE telegram_id = ? AND (
+      messages_date != ? OR messages_today < ?
+    )
+  `).run(today, today, telegramId, today, FREE_DAILY_LIMIT);
+
+  if (result.changes === 0) {
+    // Limit exceeded — no update happened
+    return { allowed: false, used: FREE_DAILY_LIMIT, limit: FREE_DAILY_LIMIT, plan: "free" };
   }
 
-  if (user.messages_today >= FREE_DAILY_LIMIT) {
-    return { allowed: false, used: user.messages_today, limit: FREE_DAILY_LIMIT, plan: "free" };
-  }
-
-  db.prepare("UPDATE users SET messages_today = messages_today + 1 WHERE telegram_id = ?")
-    .run(telegramId);
-
-  return { allowed: true, used: user.messages_today + 1, limit: FREE_DAILY_LIMIT, plan: "free" };
+  // Re-read to get actual count
+  const updated = getUser(telegramId);
+  return {
+    allowed: true,
+    used: updated?.messages_today ?? 1,
+    limit: FREE_DAILY_LIMIT,
+    plan: "free",
+  };
 }
 
 // ── Conversations ───────────────────────────────────

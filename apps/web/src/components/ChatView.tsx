@@ -33,7 +33,8 @@ export function ChatView({ agent, onBack }: Props) {
     const telegramId = tg?.initDataUnsafe?.user?.id;
     if (!telegramId) return;
 
-    fetch(`/api/conversations/${agent.id}?telegramId=${telegramId}`)
+    const controller = new AbortController();
+    fetch(`/api/conversations/${agent.id}?telegramId=${telegramId}`, { signal: controller.signal })
       .then((res) => res.json())
       .then((data) => {
         if (data.messages && data.messages.length > 0) {
@@ -41,6 +42,8 @@ export function ChatView({ agent, onBack }: Props) {
         }
       })
       .catch(() => {});
+
+    return () => controller.abort();
   }, [agent.id]);
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -54,6 +57,9 @@ export function ChatView({ agent, onBack }: Props) {
     }
 
     const reader = new FileReader();
+    reader.onerror = () => {
+      setAttachment(null);
+    };
     reader.onload = () => {
       const result = reader.result as string;
       // result is "data:<mediaType>;base64,<data>"
@@ -83,6 +89,10 @@ export function ChatView({ agent, onBack }: Props) {
   const sendMessage = async () => {
     const text = input.trim();
     if ((!text && !attachment) || loading) return;
+    if (text.length > 10000) {
+      alert("Message too long. Maximum 10,000 characters.");
+      return;
+    }
 
     const displayContent = attachment
       ? `${attachment.type === "image" ? "📷" : "📎"} ${attachment.name}${text ? `\n${text}` : ""}`

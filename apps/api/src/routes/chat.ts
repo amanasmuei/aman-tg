@@ -40,13 +40,44 @@ app.post("/", async (c) => {
     };
   };
 
+  // Input validation
+  if (!agentId || typeof agentId !== "string") {
+    return c.json({ error: "agentId is required" }, 400);
+  }
+  const trimmedMessage = (message || "").trim();
+  if (!trimmedMessage && !attachment) {
+    return c.json({ error: "Message or attachment required" }, 400);
+  }
+  if (trimmedMessage.length > 10000) {
+    return c.json({ error: "Message too long (max 10,000 characters)" }, 400);
+  }
+  if (attachment) {
+    if (!attachment.base64 || !attachment.mediaType || !attachment.name) {
+      return c.json({ error: "Invalid attachment" }, 400);
+    }
+    if (attachment.base64.length > 10_000_000) {
+      return c.json({ error: "Attachment too large (max ~7.5MB)" }, 400);
+    }
+    if (attachment.type === "image") {
+      const validTypes = ["image/png", "image/jpeg", "image/gif", "image/webp"];
+      if (!validTypes.includes(attachment.mediaType)) {
+        return c.json({ error: "Unsupported image type" }, 400);
+      }
+    }
+  }
+
+  // Sanitize user fields
+  const safeName = (firstName || "").slice(0, 100);
+  const safeLastName = (lastName || "").slice(0, 100);
+  const safeUsername = (username || "").slice(0, 100);
+
   const agent = AGENTS.find((a) => a.id === agentId);
   if (!agent) return c.json({ error: "Agent not found" }, 404);
 
   // Upsert user if telegram context provided
   let userId = telegramId;
-  if (userId && firstName) {
-    upsertUser(userId, firstName, lastName, username);
+  if (userId && safeName) {
+    upsertUser(userId, safeName, safeLastName, safeUsername);
   }
 
   // Check usage limits
@@ -63,9 +94,9 @@ app.post("/", async (c) => {
   }
 
   // Gate premium agents behind Pro plan
-  if (agent.premium && userId) {
-    const user = getUser(userId);
-    if (user && user.plan === "free") {
+  if (agent.premium) {
+    const user = userId ? getUser(userId) : null;
+    if (!user || user.plan === "free") {
       return c.json({
         error: "Premium agent requires Pro plan",
         agent: agent.name,
@@ -140,8 +171,8 @@ app.post("/", async (c) => {
 
   // Build system prompt with user context + memories
   let systemPrompt = agent.systemPrompt;
-  if (firstName) {
-    systemPrompt += `\n\nThe user's name is ${firstName}. Address them naturally.`;
+  if (safeName) {
+    systemPrompt += `\n\nThe user's name is ${safeName}. Address them naturally.`;
   }
 
   // Inject persistent memories (cross-agent, cross-session)
@@ -152,7 +183,7 @@ app.post("/", async (c) => {
     }
 
     // Extract memories from user message (async, non-blocking)
-    extractAndStoreMemories(userId, message, agentId);
+    extractAndStoreMemories(userId, trimmedMessage, agentId);
   }
 
   const client = getClient();
