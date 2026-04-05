@@ -38,6 +38,7 @@ export function ChatView({ agent, onBack }: Props) {
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const [attachment, setAttachment] = useState<Attachment | null>(null);
+  const [isNewChat, setIsNewChat] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -151,11 +152,13 @@ export function ChatView({ agent, onBack }: Props) {
         agentId: agent.id,
         message: text || "What's in this image?",
         languageHint: getLanguageDirective(),
+        newConversation: isNewChat,
         telegramId: tg?.initDataUnsafe?.user?.id,
         firstName: tg?.initDataUnsafe?.user?.first_name,
         lastName: tg?.initDataUnsafe?.user?.last_name,
         username: tg?.initDataUnsafe?.user?.username,
       };
+      if (isNewChat) setIsNewChat(false);
 
       if (currentAttachment) {
         body.attachment = {
@@ -252,7 +255,7 @@ export function ChatView({ agent, onBack }: Props) {
         <button
           onClick={() => {
             setMessages([]);
-            // Create a new conversation by clearing state — API will create new one on next message
+            setIsNewChat(true);
           }}
           className="text-xs px-3 py-1.5 rounded-full"
           style={{ background: "var(--tg-theme-secondary-bg-color)", color: "var(--tg-theme-hint-color)" }}
