@@ -1,0 +1,19 @@
+{
+  "name": "aman-tg",
+  "private": true,
+  "scripts": {
+    "dev:bot": "pnpm --filter @aman-tg/bot dev",
+    "dev:web": "pnpm --filter @aman-tg/web dev",
+    "dev:api": "pnpm --filter @aman-tg/api dev",
+    "dev": "pnpm run --parallel dev:bot dev:web dev:api",
+    "build": "pnpm -r build",
+    "lint": "pnpm -r lint",
+    "typecheck": "pnpm -r typecheck"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": ["esbuild"]
+  }
+}
