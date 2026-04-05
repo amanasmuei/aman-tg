@@ -66,6 +66,23 @@ export async function loadMemoryContext(
   }
 }
 
+/**
+ * Clear all memories for a user.
+ */
+export function clearUserMemories(telegramId: number): number {
+  try {
+    const db = getAmemDb();
+    const scope = `tg:${telegramId}`;
+    const memories = db.searchByScope(scope);
+    for (const m of memories) {
+      db.deleteMemory(m.id);
+    }
+    return memories.length;
+  } catch {
+    return 0;
+  }
+}
+
 // ── Memory extraction patterns ────────────────────────
 
 const PATTERNS: Array<{

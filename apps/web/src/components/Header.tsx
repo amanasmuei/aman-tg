@@ -7,8 +7,9 @@ interface UsageInfo {
   plan: string;
 }
 
-export function Header() {
+export function Header({ onReset }: { onReset?: () => void } = {}) {
   const [usage, setUsage] = useState<UsageInfo | null>(null);
+  const [resetting, setResetting] = useState(false);
 
   useEffect(() => {
     const tg = window.Telegram?.WebApp;
@@ -34,6 +35,33 @@ export function Header() {
 
   const isLow = usage && usage.plan === "free" && usage.messagesLimit > 0 && usage.messagesUsed >= usage.messagesLimit - 5;
 
+  const handleReset = async () => {
+    const tg = window.Telegram?.WebApp;
+    const telegramId = tg?.initDataUnsafe?.user?.id;
+    if (!telegramId) return;
+
+    if (!confirm("Are you sure you want to reset all your data? This will delete all conversations, tasks, and memories. This cannot be undone.")) return;
+
+    setResetting(true);
+    try {
+      const res = await fetch("/api/users/me/data", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ telegramId }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        alert(`Data cleared: ${data.cleared.conversations} conversations, ${data.cleared.messages} messages, ${data.cleared.todos} tasks, ${data.cleared.memories} memories.`);
+        onReset?.();
+        window.location.reload();
+      }
+    } catch {
+      alert("Failed to reset data. Please try again.");
+    } finally {
+      setResetting(false);
+    }
+  };
+
   return (
     <div className="px-4 pt-6 pb-4">
       <div className="flex items-center gap-3 mb-1">
@@ -49,6 +77,14 @@ export function Header() {
             beta
           </div>
         )}
+        <button
+          onClick={handleReset}
+          disabled={resetting}
+          className="ml-auto text-xs px-2 py-1 rounded-lg transition-opacity disabled:opacity-30"
+          style={{ background: "var(--tg-theme-secondary-bg-color)", color: "var(--tg-theme-hint-color)" }}
+        >
+          {resetting ? "..." : "Reset Data"}
+        </button>
       </div>
       <p className="text-sm" style={{ color: "var(--tg-theme-hint-color)" }}>
         {t("tagline")}

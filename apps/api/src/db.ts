@@ -448,3 +448,41 @@ export function deleteTodo(telegramId: number, todoId: string): boolean {
   const result = db.prepare("DELETE FROM todos WHERE id = ? AND telegram_id = ?").run(todoId, telegramId);
   return result.changes > 0;
 }
+
+// ── Data Reset ─────────────────────────────────────
+
+export function resetUserData(telegramId: number): {
+  conversations: number;
+  messages: number;
+  todos: number;
+} {
+  const db = getDb();
+
+  // Delete messages first (FK to conversations)
+  const msgResult = db.prepare(`
+    DELETE FROM messages WHERE conversation_id IN (
+      SELECT id FROM conversations WHERE telegram_id = ?
+    )
+  `).run(telegramId);
+
+  // Delete conversations
+  const convResult = db.prepare(
+    "DELETE FROM conversations WHERE telegram_id = ?",
+  ).run(telegramId);
+
+  // Delete todos
+  const todoResult = db.prepare(
+    "DELETE FROM todos WHERE telegram_id = ?",
+  ).run(telegramId);
+
+  // Reset usage counters (keep the user account)
+  db.prepare(
+    "UPDATE users SET messages_today = 0, messages_date = '', selected_agent_id = 'coding', updated_at = ? WHERE telegram_id = ?",
+  ).run(Date.now(), telegramId);
+
+  return {
+    conversations: convResult.changes,
+    messages: msgResult.changes,
+    todos: todoResult.changes,
+  };
+}

@@ -1,5 +1,6 @@
 import { Hono } from "hono";
-import { getUser, upsertUser, updateSelectedAgent, updateUserPlan } from "../db.js";
+import { getUser, upsertUser, updateSelectedAgent, updateUserPlan, resetUserData } from "../db.js";
+import { clearUserMemories } from "../memory.js";
 
 const app = new Hono();
 
@@ -68,6 +69,25 @@ app.post("/upgrade", async (c) => {
   console.log("[PAYMENT]", JSON.stringify(logEntry));
 
   return c.json({ ok: true, plan });
+});
+
+// DELETE /users/me/data — reset all user data (conversations, messages, todos)
+app.delete("/me/data", async (c) => {
+  const body = await c.req.json();
+  const { telegramId } = body as { telegramId: number };
+  if (!telegramId) return c.json({ error: "telegramId required" }, 400);
+
+  const user = getUser(telegramId);
+  if (!user) return c.json({ error: "User not found" }, 404);
+
+  const result = resetUserData(telegramId);
+  const memories = clearUserMemories(telegramId);
+  console.log(`[RESET] User ${telegramId} data cleared: ${JSON.stringify(result)}, memories: ${memories}`);
+
+  return c.json({
+    ok: true,
+    cleared: { ...result, memories },
+  });
 });
 
 export default app;

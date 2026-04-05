@@ -90,6 +90,7 @@ bot.api.setMyCommands([
   { command: "agent", description: "Switch AI agent" },
   { command: "pro", description: "Upgrade to Pro" },
   { command: "agents", description: "Browse all agents" },
+  { command: "reset", description: "Reset all your data" },
   { command: "help", description: "Get help" },
 ]).catch(() => {});
 
@@ -467,6 +468,70 @@ bot.on("message", async (ctx) => {
   );
 });
 
+// /reset — reset all user data
+bot.command("reset", async (ctx) => {
+  const user = ctx.from;
+  if (!user) return;
+
+  const keyboard = new InlineKeyboard()
+    .text("Yes, reset everything", "confirm_reset")
+    .row()
+    .text("Cancel", "cancel_reset");
+
+  await ctx.reply(
+    `*Are you sure?*\n\n` +
+    `This will permanently delete:\n` +
+    `• All conversations & messages\n` +
+    `• All tasks & todos\n` +
+    `• All memories\n\n` +
+    `Your account will be kept but all data will be cleared. This cannot be undone.`,
+    { parse_mode: "Markdown", reply_markup: keyboard },
+  );
+});
+
+bot.callbackQuery("confirm_reset", async (ctx) => {
+  await ctx.answerCallbackQuery();
+  const user = ctx.from;
+  if (!user) return;
+
+  try {
+    const controller = new AbortController();
+    const tid = setTimeout(() => controller.abort(), 10000);
+    const res = await fetch(`${apiUrl}/api/users/me/data`, {
+      method: "DELETE",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ telegramId: user.id }),
+      signal: controller.signal,
+    });
+    clearTimeout(tid);
+
+    if (res.ok) {
+      const data = await res.json() as { cleared: { conversations: number; messages: number; todos: number; memories: number } };
+      const c = data.cleared;
+      userAgents.delete(user.id);
+      await ctx.editMessageText(
+        `*Data reset complete!*\n\n` +
+        `Cleared:\n` +
+        `• ${c.conversations} conversations\n` +
+        `• ${c.messages} messages\n` +
+        `• ${c.todos} tasks\n` +
+        `• ${c.memories} memories\n\n` +
+        `You're starting fresh. Tap /start to begin!`,
+        { parse_mode: "Markdown" },
+      );
+    } else {
+      await ctx.editMessageText("Failed to reset data. Please try again.");
+    }
+  } catch {
+    await ctx.editMessageText("Failed to reset data. Please try again.");
+  }
+});
+
+bot.callbackQuery("cancel_reset", async (ctx) => {
+  await ctx.answerCallbackQuery("Cancelled");
+  await ctx.editMessageText("Reset cancelled. Your data is safe!");
+});
+
 // /help
 bot.command("help", async (ctx) => {
   await ctx.reply(
@@ -477,6 +542,7 @@ bot.command("help", async (ctx) => {
     `/agent <name> — Quick switch (e.g. /agent daily)\n` +
     `/pro — Upgrade to Pro (unlimited + premium agents)\n` +
     `/agents — Browse all agents\n` +
+    `/reset — Reset all your data\n` +
     `/help — Show this help\n\n` +
     `Or just type a message to chat with your active agent!`,
     { parse_mode: "Markdown" },
