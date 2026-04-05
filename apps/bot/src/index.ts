@@ -81,15 +81,13 @@ bot.api.setMyCommands([
 
 // ── Set bot description + short_description ──
 bot.api.setMyDescription(
-  "Your AI companion with 8 specialized agents.\n\n" +
-  "💻 Code Buddy — coding assistant\n" +
-  "📋 Daily Planner — organize your day\n" +
-  "📚 Study Mate — learning companion\n" +
-  "✨ Creative Spark — brainstorm partner\n" +
-  "💼 Biz Helper — business assistant\n" +
-  "🔍 Debug Pro ⭐ — systematic debugging\n" +
-  "💪 Health Coach ⭐ — fitness & wellness\n" +
-  "💰 Finance Advisor ⭐ — personal finance\n\n" +
+  "Your AI companion with 13 specialized agents.\n\n" +
+  "💻 Code Buddy  📋 Daily Planner  📚 Study Mate\n" +
+  "✨ Creative Spark  💼 Biz Helper  🇲🇾 Cikgu Bahasa\n" +
+  "👨‍🍳 Chef Aman  🕌 Quran Companion\n" +
+  "🔍 Debug Pro ⭐  💪 Health Coach ⭐\n" +
+  "💰 Finance Advisor ⭐  ✈️ Travel Buddy ⭐\n" +
+  "📝 Resume Pro ⭐\n\n" +
   "Tap Start to begin! 🚀",
 ).catch(() => {});
 
@@ -119,9 +117,10 @@ bot.command("start", async (ctx) => {
 
   await ctx.reply(
     `Assalamualaikum ${name}! 👋\n\n` +
-    `Welcome to *aman* — your AI companion that remembers you.\n\n` +
-    `Just type a message to start chatting! I'm using 💻 *Code Buddy* by default.\n\n` +
-    `Use the buttons below to switch agents, upgrade, or open the full experience.`,
+    `Welcome to *aman* — your AI companion with *13 agents*.\n\n` +
+    `Tap *📱 Open Mini App* below to start chatting!\n\n` +
+    `🤖 *Switch Agent* to pick your agent\n` +
+    `⭐ *Go Pro* for unlimited messages + premium agents`,
     { parse_mode: "Markdown", reply_markup: mainKeyboard },
   );
 });

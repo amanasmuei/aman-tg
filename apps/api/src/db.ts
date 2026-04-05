@@ -180,6 +180,17 @@ export function getOrCreateConversation(telegramId: number, agentId: string): Db
   return db.prepare("SELECT * FROM conversations WHERE id = ?").get(id) as DbConversation;
 }
 
+export function createNewConversation(telegramId: number, agentId: string): DbConversation {
+  const db = getDb();
+  const now = Date.now();
+  const id = randomUUID();
+  db.prepare(
+    "INSERT INTO conversations (id, telegram_id, agent_id, title, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)",
+  ).run(id, telegramId, agentId, "", now, now);
+
+  return db.prepare("SELECT * FROM conversations WHERE id = ?").get(id) as DbConversation;
+}
+
 export function listConversations(telegramId: number): DbConversation[] {
   const db = getDb();
   return db.prepare(

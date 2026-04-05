@@ -1,5 +1,5 @@
 import { Hono } from "hono";
-import { getOrCreateConversation, getMessages, listConversations } from "../db.js";
+import { getOrCreateConversation, createNewConversation, getMessages, listConversations } from "../db.js";
 
 const app = new Hono();
 
@@ -36,6 +36,24 @@ app.get("/:agentId", (c) => {
       timestamp: m.created_at,
       agentId,
     })),
+  });
+});
+
+// POST /conversations/new — create a new conversation
+app.post("/new", async (c) => {
+  const body = await c.req.json();
+  const { telegramId, agentId } = body as { telegramId: number; agentId: string };
+  if (!telegramId || !agentId) return c.json({ error: "telegramId and agentId required" }, 400);
+
+  const conversation = createNewConversation(telegramId, agentId);
+  return c.json({
+    conversation: {
+      id: conversation.id,
+      agentId: conversation.agent_id,
+      title: conversation.title,
+      createdAt: conversation.created_at,
+      updatedAt: conversation.updated_at,
+    },
   });
 });
 

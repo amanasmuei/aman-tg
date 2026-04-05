@@ -6,6 +6,7 @@ import {
   upsertUser,
   getUser,
   getOrCreateConversation,
+  createNewConversation,
   getMessages,
   saveMessage,
   checkAndIncrementUsage,
@@ -29,6 +30,7 @@ app.post("/", async (c) => {
     firstName?: string;
     lastName?: string;
     username?: string;
+    newConversation?: boolean;
     attachment?: {
       type: "image" | "file";
       name: string;
@@ -72,9 +74,14 @@ app.post("/", async (c) => {
   }
 
   // Get or create conversation
-  const conversation = userId
-    ? getOrCreateConversation(userId, agentId)
-    : null;
+  let conversation = null;
+  if (userId) {
+    if (body.newConversation) {
+      conversation = createNewConversation(userId, agentId);
+    } else {
+      conversation = getOrCreateConversation(userId, agentId);
+    }
+  }
 
   // Load history from DB (last 20 messages for context)
   let history: Array<{ role: "user" | "assistant"; content: string }> = [];

@@ -207,6 +207,16 @@ export function ChatView({ agent, onBack }: Props) {
           <div className="font-semibold text-sm">{agent.name}</div>
           <div className="text-xs" style={{ color: "var(--tg-theme-hint-color)" }}>{agent.personality}</div>
         </div>
+        <button
+          onClick={() => {
+            setMessages([]);
+            // Create a new conversation by clearing state — API will create new one on next message
+          }}
+          className="text-xs px-3 py-1.5 rounded-full"
+          style={{ background: "var(--tg-theme-secondary-bg-color)", color: "var(--tg-theme-hint-color)" }}
+        >
+          + New
+        </button>
       </div>
 
       {/* Messages */}

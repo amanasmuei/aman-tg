@@ -36,6 +36,20 @@ export function AgentCard({ agent, onSelect, userPlan = "free" }: Props) {
           </span>
         ))}
       </div>
+      <div
+        className="mt-2 text-xs text-right opacity-50"
+        onClick={(e) => {
+          e.stopPropagation();
+          const link = `https://t.me/aman_agent_platform_bot?start=agent_${agent.id}`;
+          navigator.clipboard.writeText(link).then(() => {
+            const el = e.currentTarget;
+            el.textContent = "Copied!";
+            setTimeout(() => { el.textContent = "Share 🔗"; }, 1500);
+          });
+        }}
+      >
+        Share 🔗
+      </div>
     </button>
   );
 }
