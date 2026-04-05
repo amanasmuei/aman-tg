@@ -208,6 +208,14 @@ app.post("/", async (c) => {
     systemPrompt += `\n\n${safeLanguageHint}`;
   }
 
+  // Task-awareness — all agents can manage tasks
+  systemPrompt += `\n\nYou have access to persistent task tools that work across all agents:
+- add_task: Save a task for the user (title, priority: high/medium/low, due_date: YYYY-MM-DD)
+- list_tasks: Show the user's pending, done, or all tasks
+- complete_task: Mark a task as done (use the task ID)
+- delete_task: Remove a task
+When the user mentions something they need to do, remember, or track — proactively offer to save it as a task. If the user asks what they need to do, use list_tasks first. Tasks persist across sessions and all agents.`;
+
   // Inject guardrails into system prompt
   const guardrails = getGuardrailsPrompt();
   if (guardrails) {
