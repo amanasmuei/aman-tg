@@ -83,6 +83,18 @@ app.post("/", async (c) => {
     upsertUser(userId, safeName, safeLastName, safeUsername);
   }
 
+  // Early image rejection for free tier (before consuming usage or saving to DB)
+  if (attachment?.type === "image" && process.env.OLLAMA_API_KEY) {
+    const user = userId ? getUser(userId) : null;
+    const isPro = user?.plan === "pro" || user?.plan === "team";
+    if (!isPro) {
+      return c.json({
+        error: "Image analysis requires Pro plan",
+        hint: "Upgrade to Pro for image understanding powered by Claude",
+      }, 403);
+    }
+  }
+
   // Check usage limits
   if (userId) {
     const usage = checkAndIncrementUsage(userId);
@@ -210,14 +222,6 @@ app.post("/", async (c) => {
   const userRecord = userId ? getUser(userId) : null;
   const isPro = userRecord?.plan === "pro" || userRecord?.plan === "team";
   const useOllama = !isPro && !!process.env.OLLAMA_API_KEY;
-
-  // Image attachments require vision model (Claude only) — warn free users
-  if (useOllama && attachment?.type === "image") {
-    return c.json({
-      error: "Image analysis requires Pro plan",
-      hint: "Upgrade to Pro for image understanding powered by Claude",
-    }, 403);
-  }
 
   return streamText(c, async (stream) => {
     try {

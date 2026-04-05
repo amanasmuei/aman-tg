@@ -70,7 +70,7 @@ export function ChatView({ agent, onBack, conversationId }: Props) {
       .catch(() => {});
 
     return () => controller.abort();
-  }, [agent.id]);
+  }, [agent.id, conversationId]);
 
   const handleScroll = () => {
     const el = chatContainerRef.current;

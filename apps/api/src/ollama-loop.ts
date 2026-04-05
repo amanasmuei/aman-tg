@@ -96,7 +96,10 @@ export async function runOllamaAgentLoop(opts: OllamaAgentOptions): Promise<stri
       throw new Error(`Ollama API error ${res.status}: ${errText}`);
     }
 
-    if (!res.body) throw new Error("No response body from Ollama");
+    if (!res.body) {
+      clearTimeout(timeout);
+      throw new Error("No response body from Ollama");
+    }
 
     // Parse NDJSON stream
     const reader = res.body.getReader();
