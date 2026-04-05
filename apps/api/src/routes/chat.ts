@@ -1,10 +1,17 @@
 import { Hono } from "hono";
 import { streamText } from "hono/streaming";
+import Anthropic from "@anthropic-ai/sdk";
 import { AGENTS } from "@aman-tg/shared";
 
 const app = new Hono();
 
-// POST /chat — send message to agent
+function getClient(): Anthropic {
+  const apiKey = process.env.ANTHROPIC_API_KEY;
+  if (!apiKey) throw new Error("ANTHROPIC_API_KEY is required");
+  return new Anthropic({ apiKey });
+}
+
+// POST /chat — send message to agent with streaming
 app.post("/", async (c) => {
   const body = await c.req.json();
   const { agentId, message, history } = body as {
@@ -16,19 +23,41 @@ app.post("/", async (c) => {
   const agent = AGENTS.find((a) => a.id === agentId);
   if (!agent) return c.json({ error: "Agent not found" }, 404);
 
-  // Build messages for LLM
-  const messages = [
-    ...(history || []).map((m) => ({ role: m.role, content: m.content })),
-    { role: "user", content: message },
-  ];
+  const client = getClient();
+  const model = process.env.CLAUDE_MODEL || "claude-sonnet-4-6";
 
-  // TODO: Connect to actual LLM (Anthropic/OpenAI)
-  // For now, return a placeholder streaming response
+  // Build messages array
+  const messages: Array<{ role: "user" | "assistant"; content: string }> = [];
+  if (history) {
+    for (const m of history) {
+      if (m.role === "user" || m.role === "assistant") {
+        messages.push({ role: m.role, content: m.content });
+      }
+    }
+  }
+  messages.push({ role: "user", content: message });
+
   return streamText(c, async (stream) => {
-    const placeholder = `[${agent.name}] I received your message: "${message}". LLM integration coming soon!`;
-    for (const char of placeholder) {
-      await stream.write(char);
-      await stream.sleep(20);
+    try {
+      const response = await client.messages.create({
+        model,
+        max_tokens: 2048,
+        system: agent.systemPrompt,
+        messages,
+        stream: true,
+      });
+
+      for await (const event of response) {
+        if (
+          event.type === "content_block_delta" &&
+          event.delta.type === "text_delta"
+        ) {
+          await stream.write(event.delta.text);
+        }
+      }
+    } catch (err) {
+      const errMsg = err instanceof Error ? err.message : "LLM error";
+      await stream.write(`\n\n[Error: ${errMsg}]`);
     }
   });
 });
