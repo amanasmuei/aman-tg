@@ -16,6 +16,7 @@ const QUICK_PROMPTS: Record<string, string[]> = {
   recipe: ["Quick dinner", "Nasi lemak", "Meal prep ideas"],
   travel: ["Plan a trip", "Budget travel", "Hidden gems"],
   resume: ["Review my resume", "Cover letter", "LinkedIn tips"],
+  todo: ["Show my tasks", "Add a new task", "What should I do today?"],
   quran: ["Tafsir surah", "Dua harian", "Tajweed basics"],
   default: ["Help me with something", "Tell me about yourself", "What can you do?"],
 };

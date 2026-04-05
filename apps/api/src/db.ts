@@ -69,6 +69,22 @@ export function getDb(): Database.Database {
 
     CREATE UNIQUE INDEX IF NOT EXISTS idx_referrals_referred
       ON referrals(referred_id);
+
+    CREATE TABLE IF NOT EXISTS todos (
+      id TEXT PRIMARY KEY,
+      telegram_id INTEGER NOT NULL,
+      title TEXT NOT NULL,
+      description TEXT NOT NULL DEFAULT '',
+      priority TEXT NOT NULL DEFAULT 'medium',
+      due_date TEXT,
+      status TEXT NOT NULL DEFAULT 'pending',
+      created_at INTEGER NOT NULL,
+      updated_at INTEGER NOT NULL,
+      FOREIGN KEY (telegram_id) REFERENCES users(telegram_id)
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_todos_user_status
+      ON todos(telegram_id, status);
   `);
 
   return _db;
@@ -346,4 +362,84 @@ export function getReferralStats(telegramId: number): { count: number; totalRewa
     "SELECT COUNT(*) as count, COALESCE(SUM(reward_days), 0) as total_days FROM referrals WHERE referrer_id = ?",
   ).get(telegramId) as { count: number; total_days: number };
   return { count: row.count, totalRewardDays: row.total_days };
+}
+
+// ── Todos ──────────────────────────────────────────
+
+export interface DbTodo {
+  id: string;
+  telegram_id: number;
+  title: string;
+  description: string;
+  priority: "high" | "medium" | "low";
+  due_date: string | null;
+  status: "pending" | "done";
+  created_at: number;
+  updated_at: number;
+}
+
+export function addTodo(
+  telegramId: number,
+  title: string,
+  description = "",
+  priority: "high" | "medium" | "low" = "medium",
+  dueDate?: string,
+): DbTodo {
+  const db = getDb();
+  const id = randomUUID();
+  const now = Date.now();
+  db.prepare(
+    "INSERT INTO todos (id, telegram_id, title, description, priority, due_date, status, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, 'pending', ?, ?)",
+  ).run(id, telegramId, title, description, priority, dueDate || null, now, now);
+  return db.prepare("SELECT * FROM todos WHERE id = ?").get(id) as DbTodo;
+}
+
+export function listTodos(
+  telegramId: number,
+  status?: "pending" | "done" | "all",
+): DbTodo[] {
+  const db = getDb();
+  if (status === "all") {
+    return db.prepare(
+      "SELECT * FROM todos WHERE telegram_id = ? ORDER BY CASE priority WHEN 'high' THEN 1 WHEN 'medium' THEN 2 ELSE 3 END, created_at DESC LIMIT 50",
+    ).all(telegramId) as DbTodo[];
+  }
+  const filterStatus = status || "pending";
+  return db.prepare(
+    "SELECT * FROM todos WHERE telegram_id = ? AND status = ? ORDER BY CASE priority WHEN 'high' THEN 1 WHEN 'medium' THEN 2 ELSE 3 END, created_at DESC LIMIT 50",
+  ).all(telegramId, filterStatus) as DbTodo[];
+}
+
+export function completeTodo(telegramId: number, todoId: string): DbTodo | null {
+  const db = getDb();
+  const result = db.prepare(
+    "UPDATE todos SET status = 'done', updated_at = ? WHERE id = ? AND telegram_id = ?",
+  ).run(Date.now(), todoId, telegramId);
+  if (result.changes === 0) return null;
+  return db.prepare("SELECT * FROM todos WHERE id = ?").get(todoId) as DbTodo;
+}
+
+export function updateTodo(
+  telegramId: number,
+  todoId: string,
+  updates: { title?: string; description?: string; priority?: string; due_date?: string; status?: string },
+): DbTodo | null {
+  const db = getDb();
+  const todo = db.prepare("SELECT * FROM todos WHERE id = ? AND telegram_id = ?").get(todoId, telegramId) as DbTodo | undefined;
+  if (!todo) return null;
+
+  const now = Date.now();
+  if (updates.title) db.prepare("UPDATE todos SET title = ?, updated_at = ? WHERE id = ?").run(updates.title, now, todoId);
+  if (updates.description) db.prepare("UPDATE todos SET description = ?, updated_at = ? WHERE id = ?").run(updates.description, now, todoId);
+  if (updates.priority) db.prepare("UPDATE todos SET priority = ?, updated_at = ? WHERE id = ?").run(updates.priority, now, todoId);
+  if (updates.due_date) db.prepare("UPDATE todos SET due_date = ?, updated_at = ? WHERE id = ?").run(updates.due_date, now, todoId);
+  if (updates.status) db.prepare("UPDATE todos SET status = ?, updated_at = ? WHERE id = ?").run(updates.status, now, todoId);
+
+  return db.prepare("SELECT * FROM todos WHERE id = ?").get(todoId) as DbTodo;
+}
+
+export function deleteTodo(telegramId: number, todoId: string): boolean {
+  const db = getDb();
+  const result = db.prepare("DELETE FROM todos WHERE id = ? AND telegram_id = ?").run(todoId, telegramId);
+  return result.changes > 0;
 }

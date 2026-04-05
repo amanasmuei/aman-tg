@@ -7,7 +7,7 @@
  */
 
 import Anthropic from "@anthropic-ai/sdk";
-import { TOOLS, executeTool } from "./tools.js";
+import { TOOLS, executeTool, type ToolContext } from "./tools.js";
 
 const MAX_TOOL_TURNS = 5;
 
@@ -19,6 +19,7 @@ interface AgentStreamOptions {
   maxTokens?: number;
   onText: (text: string) => Promise<void>;
   onToolUse?: (toolName: string) => void;
+  toolContext?: ToolContext;
 }
 
 /**
@@ -30,7 +31,7 @@ interface AgentStreamOptions {
  * Returns the full assistant response text.
  */
 export async function runAgentLoop(opts: AgentStreamOptions): Promise<string> {
-  const { client, model, systemPrompt, maxTokens = 2048, onText, onToolUse } = opts;
+  const { client, model, systemPrompt, maxTokens = 2048, onText, onToolUse, toolContext } = opts;
   const messages = [...opts.messages]; // Don't mutate original
   let fullResponse = "";
   let toolTurns = 0;
@@ -127,7 +128,7 @@ export async function runAgentLoop(opts: AgentStreamOptions): Promise<string> {
       }
       onToolUse?.(block.name);
 
-      const result = await executeTool(block.name, input as Record<string, unknown>);
+      const result = await executeTool(block.name, input as Record<string, unknown>, toolContext);
       toolResults.push({
         type: "tool_result",
         tool_use_id: block.id,

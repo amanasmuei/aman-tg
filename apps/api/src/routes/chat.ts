@@ -256,6 +256,7 @@ app.post("/", async (c) => {
           onToolUse: (toolName) => {
             console.log(`[TOOL] ${toolName} called by ${agentId} for user ${userId} (ollama)`);
           },
+          toolContext: { telegramId: userId },
         });
       } else {
         // Pro/Team tier: Claude (or fallback if no Ollama key)
@@ -281,6 +282,7 @@ app.post("/", async (c) => {
           onToolUse: (toolName) => {
             console.log(`[TOOL] ${toolName} called by ${agentId} for user ${userId}`);
           },
+          toolContext: { telegramId: userId },
         });
       }
 

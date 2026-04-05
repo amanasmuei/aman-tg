@@ -3,6 +3,8 @@
  * Same pattern as aman-agent MCP tools, adapted for the API server.
  */
 
+import { addTodo, listTodos, completeTodo, deleteTodo, type DbTodo } from "./db.js";
+
 export interface ToolDefinition {
   name: string;
   description: string;
@@ -12,6 +14,11 @@ export interface ToolDefinition {
 export interface ToolResult {
   content: string;
   is_error?: boolean;
+}
+
+/** Context passed to tool execution (e.g., which user is calling) */
+export interface ToolContext {
+  telegramId?: number;
 }
 
 // ── Tool Definitions ────────────────────────────────
@@ -57,6 +64,79 @@ export const TOOLS: ToolDefinition[] = [
       required: ["expression"],
     },
   },
+  {
+    name: "add_task",
+    description:
+      "Add a new task/todo for the user. Use this when the user wants to remember something, create a task, add a to-do, set a reminder, or track something they need to do.",
+    input_schema: {
+      type: "object",
+      properties: {
+        title: {
+          type: "string",
+          description: "Short title of the task",
+        },
+        description: {
+          type: "string",
+          description: "Optional longer description or details",
+        },
+        priority: {
+          type: "string",
+          enum: ["high", "medium", "low"],
+          description: "Task priority (default: medium)",
+        },
+        due_date: {
+          type: "string",
+          description: "Optional due date in YYYY-MM-DD format",
+        },
+      },
+      required: ["title"],
+    },
+  },
+  {
+    name: "list_tasks",
+    description:
+      "List the user's tasks/todos. Use this when the user wants to see their tasks, check what they need to do, review pending items, or see completed tasks.",
+    input_schema: {
+      type: "object",
+      properties: {
+        status: {
+          type: "string",
+          enum: ["pending", "done", "all"],
+          description: "Filter by status (default: pending)",
+        },
+      },
+    },
+  },
+  {
+    name: "complete_task",
+    description:
+      "Mark a task as done/completed. Use this when the user says they finished a task, completed something, or wants to check off an item.",
+    input_schema: {
+      type: "object",
+      properties: {
+        task_id: {
+          type: "string",
+          description: "The ID of the task to mark as done",
+        },
+      },
+      required: ["task_id"],
+    },
+  },
+  {
+    name: "delete_task",
+    description:
+      "Delete/remove a task permanently. Use this when the user wants to remove a task they no longer need.",
+    input_schema: {
+      type: "object",
+      properties: {
+        task_id: {
+          type: "string",
+          description: "The ID of the task to delete",
+        },
+      },
+      required: ["task_id"],
+    },
+  },
 ];
 
 // ── Ollama-compatible format ────────────────────────
@@ -75,12 +155,21 @@ export const OLLAMA_TOOLS: OllamaToolDefinition[] = TOOLS.map((t) => ({
 export async function executeTool(
   name: string,
   input: Record<string, unknown>,
+  ctx?: ToolContext,
 ): Promise<ToolResult> {
   switch (name) {
     case "fetch_url":
       return fetchUrl(input.url as string);
     case "calculate":
       return calculate(input.expression as string);
+    case "add_task":
+      return handleAddTask(input, ctx);
+    case "list_tasks":
+      return handleListTasks(input, ctx);
+    case "complete_task":
+      return handleCompleteTask(input, ctx);
+    case "delete_task":
+      return handleDeleteTask(input, ctx);
     default:
       return { content: `Unknown tool: ${name}`, is_error: true };
   }
@@ -303,4 +392,76 @@ function tokenize(expr: string): string[] {
   }
 
   return tokens;
+}
+
+// ── Todo tool handlers ─────────────────────────────
+
+function formatTodo(t: DbTodo): string {
+  const status = t.status === "done" ? "✅" : "⬜";
+  const priority = t.priority === "high" ? "🔴" : t.priority === "medium" ? "🟡" : "🟢";
+  const due = t.due_date ? ` (due: ${t.due_date})` : "";
+  const desc = t.description ? `\n   ${t.description}` : "";
+  return `${status} ${priority} **${t.title}**${due}${desc}\n   ID: \`${t.id.slice(0, 8)}\``;
+}
+
+function handleAddTask(input: Record<string, unknown>, ctx?: ToolContext): ToolResult {
+  if (!ctx?.telegramId) return { content: "User context required", is_error: true };
+  const title = (input.title as string || "").trim();
+  if (!title) return { content: "Task title is required", is_error: true };
+
+  const todo = addTodo(
+    ctx.telegramId,
+    title.slice(0, 200),
+    ((input.description as string) || "").slice(0, 500),
+    (input.priority as "high" | "medium" | "low") || "medium",
+    input.due_date as string | undefined,
+  );
+
+  return { content: `Task added!\n\n${formatTodo(todo)}` };
+}
+
+function handleListTasks(input: Record<string, unknown>, ctx?: ToolContext): ToolResult {
+  if (!ctx?.telegramId) return { content: "User context required", is_error: true };
+
+  const status = (input.status as "pending" | "done" | "all") || "pending";
+  const todos = listTodos(ctx.telegramId, status);
+
+  if (todos.length === 0) {
+    return { content: status === "pending" ? "No pending tasks! You're all caught up." : `No ${status} tasks found.` };
+  }
+
+  const label = status === "all" ? "All tasks" : status === "done" ? "Completed tasks" : "Pending tasks";
+  const list = todos.map(formatTodo).join("\n\n");
+  return { content: `${label} (${todos.length}):\n\n${list}` };
+}
+
+function handleCompleteTask(input: Record<string, unknown>, ctx?: ToolContext): ToolResult {
+  if (!ctx?.telegramId) return { content: "User context required", is_error: true };
+  const taskId = (input.task_id as string || "").trim();
+  if (!taskId) return { content: "Task ID is required", is_error: true };
+
+  // Support short IDs (first 8 chars)
+  const todos = listTodos(ctx.telegramId, "all");
+  const match = todos.find((t) => t.id === taskId || t.id.startsWith(taskId));
+  if (!match) return { content: `Task not found: ${taskId}`, is_error: true };
+
+  const result = completeTodo(ctx.telegramId, match.id);
+  if (!result) return { content: "Failed to complete task", is_error: true };
+  return { content: `Task completed!\n\n${formatTodo(result)}` };
+}
+
+function handleDeleteTask(input: Record<string, unknown>, ctx?: ToolContext): ToolResult {
+  if (!ctx?.telegramId) return { content: "User context required", is_error: true };
+  const taskId = (input.task_id as string || "").trim();
+  if (!taskId) return { content: "Task ID is required", is_error: true };
+
+  // Support short IDs
+  const todos = listTodos(ctx.telegramId, "all");
+  const match = todos.find((t) => t.id === taskId || t.id.startsWith(taskId));
+  if (!match) return { content: `Task not found: ${taskId}`, is_error: true };
+
+  const ok = deleteTodo(ctx.telegramId, match.id);
+  return ok
+    ? { content: `Task "${match.title}" deleted.` }
+    : { content: "Failed to delete task", is_error: true };
 }

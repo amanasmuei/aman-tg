@@ -5,7 +5,7 @@
  * Supports tool calling in OpenAI-compatible format.
  */
 
-import { OLLAMA_TOOLS, executeTool } from "./tools.js";
+import { OLLAMA_TOOLS, executeTool, type ToolContext } from "./tools.js";
 
 const MAX_TOOL_TURNS = 5;
 const OLLAMA_BASE_URL = process.env.OLLAMA_BASE_URL || "https://ollama.com/api";
@@ -38,6 +38,7 @@ interface OllamaAgentOptions {
   maxTokens?: number;
   onText: (text: string) => Promise<void>;
   onToolUse?: (toolName: string) => void;
+  toolContext?: ToolContext;
 }
 
 /**
@@ -45,7 +46,7 @@ interface OllamaAgentOptions {
  * Returns the full assistant response text.
  */
 export async function runOllamaAgentLoop(opts: OllamaAgentOptions): Promise<string> {
-  const { model, systemPrompt, maxTokens = 2048, onText, onToolUse } = opts;
+  const { model, systemPrompt, maxTokens = 2048, onText, onToolUse, toolContext } = opts;
   const apiKey = process.env.OLLAMA_API_KEY;
   if (!apiKey) throw new Error("OLLAMA_API_KEY is required");
 
@@ -188,7 +189,7 @@ export async function runOllamaAgentLoop(opts: OllamaAgentOptions): Promise<stri
         catch { args = {}; }
       }
 
-      const result = await executeTool(call.function.name, args as Record<string, unknown>);
+      const result = await executeTool(call.function.name, args as Record<string, unknown>, toolContext);
       messages.push({
         role: "tool",
         content: result.is_error ? `Error: ${result.content}` : result.content,
