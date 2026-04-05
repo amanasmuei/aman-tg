@@ -56,6 +56,19 @@ export function getDb(): Database.Database {
 
     CREATE INDEX IF NOT EXISTS idx_messages_conversation
       ON messages(conversation_id, created_at);
+
+    CREATE TABLE IF NOT EXISTS referrals (
+      id TEXT PRIMARY KEY,
+      referrer_id INTEGER NOT NULL,
+      referred_id INTEGER NOT NULL,
+      reward_days INTEGER NOT NULL DEFAULT 3,
+      created_at INTEGER NOT NULL,
+      FOREIGN KEY (referrer_id) REFERENCES users(telegram_id),
+      FOREIGN KEY (referred_id) REFERENCES users(telegram_id)
+    );
+
+    CREATE UNIQUE INDEX IF NOT EXISTS idx_referrals_referred
+      ON referrals(referred_id);
   `);
 
   return _db;
@@ -248,4 +261,75 @@ export function getMessages(conversationId: string, limit = 20): DbMessage[] {
     "SELECT * FROM messages WHERE conversation_id = ? ORDER BY created_at DESC LIMIT ?",
   ).all(conversationId, limit) as DbMessage[];
   return rows.reverse();
+}
+
+// ── Referrals ───────────────────────────────────────
+
+const REFERRAL_REWARD_DAYS = 3;
+
+export interface DbReferral {
+  id: string;
+  referrer_id: number;
+  referred_id: number;
+  reward_days: number;
+  created_at: number;
+}
+
+/**
+ * Process a referral. Returns null if already referred or self-referral.
+ */
+export function processReferral(
+  referrerId: number,
+  referredId: number,
+): { referrer: DbUser; referred: DbUser; rewardDays: number } | null {
+  const db = getDb();
+
+  // No self-referral
+  if (referrerId === referredId) return null;
+
+  // Check if already referred
+  const existing = db.prepare(
+    "SELECT id FROM referrals WHERE referred_id = ?",
+  ).get(referredId);
+  if (existing) return null;
+
+  // Check both users exist
+  const referrer = getUser(referrerId);
+  const referred = getUser(referredId);
+  if (!referrer || !referred) return null;
+
+  const now = Date.now();
+  const proExpiry = now + REFERRAL_REWARD_DAYS * 24 * 60 * 60 * 1000;
+
+  // Save referral
+  db.prepare(
+    "INSERT INTO referrals (id, referrer_id, referred_id, reward_days, created_at) VALUES (?, ?, ?, ?, ?)",
+  ).run(randomUUID(), referrerId, referredId, REFERRAL_REWARD_DAYS, now);
+
+  // Upgrade both to pro (if they're on free)
+  if (referrer.plan === "free") {
+    db.prepare("UPDATE users SET plan = 'pro', updated_at = ? WHERE telegram_id = ?")
+      .run(now, referrerId);
+  }
+  if (referred.plan === "free") {
+    db.prepare("UPDATE users SET plan = 'pro', updated_at = ? WHERE telegram_id = ?")
+      .run(now, referredId);
+  }
+
+  return {
+    referrer: getUser(referrerId)!,
+    referred: getUser(referredId)!,
+    rewardDays: REFERRAL_REWARD_DAYS,
+  };
+}
+
+/**
+ * Get referral stats for a user.
+ */
+export function getReferralStats(telegramId: number): { count: number; totalRewardDays: number } {
+  const db = getDb();
+  const row = db.prepare(
+    "SELECT COUNT(*) as count, COALESCE(SUM(reward_days), 0) as total_days FROM referrals WHERE referrer_id = ?",
+  ).get(telegramId) as { count: number; total_days: number };
+  return { count: row.count, totalRewardDays: row.total_days };
 }

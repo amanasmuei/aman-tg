@@ -10,6 +10,7 @@ import chatRoute from "./routes/chat.js";
 import conversationsRoute from "./routes/conversations.js";
 import usersRoute from "./routes/users.js";
 import adminRoute from "./routes/admin.js";
+import referralsRoute from "./routes/referrals.js";
 import { getDb } from "./db.js";
 
 const app = new Hono();
@@ -48,6 +49,7 @@ app.route("/api/chat", chatRoute);
 app.route("/api/conversations", conversationsRoute);
 app.route("/api/users", usersRoute);
 app.route("/api/admin", adminRoute);
+app.route("/api/referrals", referralsRoute);
 
 // Health check
 app.get("/health", (c) => c.json({ status: "ok", version: "0.2.0" }));

@@ -104,8 +104,37 @@ bot.command("start", async (ctx) => {
   const user = ctx.from;
   const name = user?.first_name || "there";
 
-  // Check for deep link: /start agent_coding
+  // Check for referral deep link: /start ref_12345
   const payload = ctx.match;
+  if (payload && payload.startsWith("ref_")) {
+    const referrerId = parseInt(payload.replace("ref_", ""), 10);
+    if (user && referrerId && !isNaN(referrerId) && referrerId !== user.id) {
+      // Process referral via API
+      try {
+        const res = await fetch(`${apiUrl}/api/referrals`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ referrerId, referredId: user.id }),
+        });
+        if (res.ok) {
+          const data = await res.json() as { rewardDays: number; referrer: string };
+          await ctx.reply(
+            `🎉 *Welcome to aman!*\n\n` +
+            `You were invited by *${data.referrer}*.\n` +
+            `Both of you get *${data.rewardDays} days Pro* free!\n\n` +
+            `✅ Unlimited messages\n` +
+            `✅ All premium agents unlocked\n\n` +
+            `Tap the buttons below to start:`,
+            { parse_mode: "Markdown", reply_markup: mainKeyboard },
+          );
+          return;
+        }
+      } catch {}
+    }
+    // Fall through to normal start if referral fails
+  }
+
+  // Check for agent deep link: /start agent_coding
   if (payload && payload.startsWith("agent_")) {
     const agentId = payload.replace("agent_", "");
     const agent = AGENTS.find((a) => a.id === agentId);

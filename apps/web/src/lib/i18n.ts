@@ -93,6 +93,8 @@ const strings: Record<Locale, Record<string, string>> = {
     pro: "Pro",
     startChattingFree: "Start Chatting — It's Free",
     builtBy: "Built by",
+    inviteFriends: "Invite Friends",
+    inviteReward: "Both get 3 days Pro free",
   },
 
   ms: {
@@ -168,6 +170,8 @@ const strings: Record<Locale, Record<string, string>> = {
     pro: "Pro",
     startChattingFree: "Mula Berbual — Percuma",
     builtBy: "Dibina oleh",
+    inviteFriends: "Jemput Kawan",
+    inviteReward: "Dapat 3 hari Pro percuma",
   },
 
   id: {
@@ -243,6 +247,8 @@ const strings: Record<Locale, Record<string, string>> = {
     pro: "Pro",
     startChattingFree: "Mulai Ngobrol — Gratis",
     builtBy: "Dibuat oleh",
+    inviteFriends: "Ajak Teman",
+    inviteReward: "Dapat 3 hari Pro gratis",
   },
 };
 

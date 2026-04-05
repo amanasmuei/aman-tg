@@ -90,6 +90,29 @@ export function App() {
               <span className="ml-auto" style={{ color: "var(--tg-theme-hint-color)" }}>›</span>
             </button>
           </div>
+          {/* Invite button */}
+          <div className="px-4 pb-3">
+            <button
+              onClick={() => {
+                const tg = window.Telegram?.WebApp;
+                const telegramId = tg?.initDataUnsafe?.user?.id;
+                if (!telegramId) return;
+                const link = `https://t.me/aman_agent_platform_bot?start=ref_${telegramId}`;
+                navigator.clipboard.writeText(link).then(() => {
+                  const el = document.getElementById("invite-btn-text");
+                  if (el) {
+                    el.textContent = t("copied");
+                    setTimeout(() => { el.textContent = `🎁 ${t("inviteFriends")}`; }, 2000);
+                  }
+                });
+              }}
+              className="w-full rounded-xl px-4 py-3 text-sm font-medium flex items-center gap-2 transition-transform active:scale-98"
+              style={{ background: "linear-gradient(135deg, rgba(245,158,11,0.15) 0%, transparent 60%), var(--tg-theme-secondary-bg-color)" }}
+            >
+              <span id="invite-btn-text">🎁 {t("inviteFriends")}</span>
+              <span className="ml-auto text-xs" style={{ color: "var(--tg-theme-hint-color)" }}>{t("inviteReward")}</span>
+            </button>
+          </div>
           <AgentGrid onSelect={handleSelectAgent} userPlan={userPlan} />
         </>
       )}
