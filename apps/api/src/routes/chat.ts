@@ -11,6 +11,7 @@ import {
   saveMessage,
   checkAndIncrementUsage,
 } from "../db.js";
+import { loadMemoryContext, extractAndStoreMemories } from "../memory.js";
 
 const app = new Hono();
 
@@ -137,10 +138,21 @@ app.post("/", async (c) => {
     { role: "user" as const, content: userContent },
   ];
 
-  // Build system prompt with user context
+  // Build system prompt with user context + memories
   let systemPrompt = agent.systemPrompt;
   if (firstName) {
     systemPrompt += `\n\nThe user's name is ${firstName}. Address them naturally.`;
+  }
+
+  // Inject persistent memories (cross-agent, cross-session)
+  if (userId) {
+    const memoryContext = await loadMemoryContext(userId, agentId, message);
+    if (memoryContext) {
+      systemPrompt += memoryContext;
+    }
+
+    // Extract memories from user message (async, non-blocking)
+    extractAndStoreMemories(userId, message, agentId);
   }
 
   const client = getClient();
