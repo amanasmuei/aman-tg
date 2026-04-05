@@ -1,5 +1,5 @@
 import { Hono } from "hono";
-import { getUser, upsertUser, updateSelectedAgent } from "../db.js";
+import { getUser, upsertUser, updateSelectedAgent, updateUserPlan } from "../db.js";
 
 const app = new Hono();
 
@@ -34,6 +34,35 @@ app.put("/me/agent", async (c) => {
 
   updateSelectedAgent(telegramId, agentId);
   return c.json({ ok: true });
+});
+
+// POST /users/upgrade — upgrade user plan (called after Stars payment)
+app.post("/upgrade", async (c) => {
+  const body = await c.req.json();
+  const { telegramId, plan, payload, chargeId, totalAmount } = body as {
+    telegramId: number;
+    plan: string;
+    payload?: string;
+    chargeId?: string;
+    totalAmount?: number;
+  };
+
+  if (!telegramId || !plan) return c.json({ error: "telegramId and plan required" }, 400);
+
+  updateUserPlan(telegramId, plan);
+
+  // Log the payment (simple append to a JSON file for now)
+  const logEntry = {
+    telegramId,
+    plan,
+    payload,
+    chargeId,
+    totalAmount,
+    timestamp: Date.now(),
+  };
+  console.log("[PAYMENT]", JSON.stringify(logEntry));
+
+  return c.json({ ok: true, plan });
 });
 
 export default app;

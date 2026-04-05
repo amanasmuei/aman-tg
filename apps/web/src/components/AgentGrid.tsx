@@ -5,9 +5,10 @@ import { AgentCard } from "./AgentCard";
 
 interface Props {
   onSelect: (agent: Agent) => void;
+  userPlan?: string;
 }
 
-export function AgentGrid({ onSelect }: Props) {
+export function AgentGrid({ onSelect, userPlan }: Props) {
   const [activeCategory, setActiveCategory] = useState("all");
 
   const filtered = activeCategory === "all"
@@ -40,7 +41,7 @@ export function AgentGrid({ onSelect }: Props) {
       {/* Agent cards grid */}
       <div className="grid grid-cols-2 gap-3">
         {filtered.map((agent) => (
-          <AgentCard key={agent.id} agent={agent} onSelect={onSelect} />
+          <AgentCard key={agent.id} agent={agent} onSelect={onSelect} userPlan={userPlan} />
         ))}
       </div>
     </div>

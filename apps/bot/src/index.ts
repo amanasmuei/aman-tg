@@ -1,5 +1,5 @@
 import "dotenv/config";
-import { Bot, InlineKeyboard, webhookCallback } from "grammy";
+import { Bot, InlineKeyboard } from "grammy";
 import { AGENTS } from "@aman-tg/shared";
 
 const token = process.env.BOT_TOKEN;
@@ -8,8 +8,11 @@ if (!token) {
   process.exit(1);
 }
 
-const miniAppUrl = process.env.MINI_APP_URL || "https://aman-tg.vercel.app";
+const miniAppUrl = process.env.MINI_APP_URL || "https://aman.kooleklabs.com";
 const apiUrl = process.env.API_URL || "http://localhost:3000";
+
+// Track selected agent per user (in-memory, resets on restart — DB is source of truth)
+const userAgents = new Map<number, string>();
 
 async function chatWithAgent(
   agentId: string,
@@ -28,14 +31,17 @@ async function chatWithAgent(
 
     if (res.status === 429) {
       const data = await res.json() as { limit: number };
-      return `You've reached the daily limit of ${data.limit} messages. Upgrade to Pro for unlimited access!`;
+      return `You've reached the daily limit of ${data.limit} messages.\n\nUpgrade to Pro for unlimited access! Use /pro to upgrade.`;
+    }
+
+    if (res.status === 403) {
+      return `This is a Premium agent. Upgrade to Pro to unlock it!\n\nUse /pro to upgrade.`;
     }
 
     if (!res.ok) {
       return "Sorry, something went wrong. Please try again.";
     }
 
-    // Read streaming response as full text
     const text = await res.text();
     return text || "I couldn't generate a response. Please try again.";
   } catch {
@@ -43,35 +49,249 @@ async function chatWithAgent(
   }
 }
 
+async function getUserPlan(telegramId: number): Promise<string> {
+  try {
+    const res = await fetch(`${apiUrl}/api/users/me?telegramId=${telegramId}`);
+    if (res.ok) {
+      const data = await res.json() as { plan: string };
+      return data.plan || "free";
+    }
+  } catch {}
+  return "free";
+}
+
 const bot = new Bot(token);
 
-// /start — welcome message with Mini App button
+// /start
 bot.command("start", async (ctx) => {
   const user = ctx.from;
   const name = user?.first_name || "there";
 
+  // Check for deep link: /start agent_coding
+  const payload = ctx.match;
+  if (payload && payload.startsWith("agent_")) {
+    const agentId = payload.replace("agent_", "");
+    const agent = AGENTS.find((a) => a.id === agentId);
+    if (agent && user) {
+      userAgents.set(user.id, agentId);
+      await ctx.reply(
+        `${agent.icon} *${agent.name}* activated!\n\n_${agent.description}_\n\nSend me a message to start chatting.`,
+        { parse_mode: "Markdown" },
+      );
+      return;
+    }
+  }
+
   const keyboard = new InlineKeyboard()
     .webApp("Open aman", miniAppUrl)
     .row()
-    .text("Browse Agents", "browse_agents");
+    .text("Browse Agents", "browse_agents")
+    .text("Upgrade to Pro", "show_pro");
 
   await ctx.reply(
-    `Assalamualaikum ${name}! \u{1F44B}\n\n` +
-    `Welcome to *aman* \u2014 your AI companion that remembers you.\n\n` +
-    `\u{1F916} *8 AI agents* ready to help:\n` +
-    `\u{1F4BB} Code Buddy \u2014 coding assistant\n` +
-    `\u{1F4CB} Daily Planner \u2014 organize your day\n` +
-    `\u{1F4DA} Study Mate \u2014 learning companion\n` +
-    `\u2728 Creative Spark \u2014 brainstorm partner\n` +
-    `\u{1F4BC} Biz Helper \u2014 business assistant\n` +
-    `...and more!\n\n` +
-    `Tap *Open aman* to get started, or type a message to chat with the default agent.`,
-    {
-      parse_mode: "Markdown",
-      reply_markup: keyboard,
-    }
+    `Assalamualaikum ${name}! 👋\n\n` +
+    `Welcome to *aman* — your AI companion that remembers you.\n\n` +
+    `🤖 *8 AI agents* ready to help:\n` +
+    `💻 Code Buddy — coding assistant\n` +
+    `📋 Daily Planner — organize your day\n` +
+    `📚 Study Mate — learning companion\n` +
+    `✨ Creative Spark — brainstorm partner\n` +
+    `💼 Biz Helper — business assistant\n` +
+    `🔍 Debug Pro ⭐ — systematic debugging\n` +
+    `💪 Health Coach ⭐ — fitness & wellness\n` +
+    `💰 Finance Advisor ⭐ — personal finance\n\n` +
+    `Tap *Open aman* to use the full Mini App, or just type a message here!`,
+    { parse_mode: "Markdown", reply_markup: keyboard },
   );
 });
+
+// /pro — show upgrade options
+bot.command("pro", async (ctx) => {
+  const user = ctx.from;
+  if (!user) return;
+
+  const plan = await getUserPlan(user.id);
+  if (plan === "pro") {
+    await ctx.reply("✅ You're already on the *Pro* plan! Unlimited messages and all agents unlocked.", { parse_mode: "Markdown" });
+    return;
+  }
+
+  const keyboard = new InlineKeyboard()
+    .text("⭐ 100 Stars — 1 Month Pro", "buy_pro_100")
+    .row()
+    .text("⭐ 250 Stars — 3 Months Pro", "buy_pro_250");
+
+  await ctx.reply(
+    `⭐ *aman Pro*\n\n` +
+    `Upgrade to unlock:\n` +
+    `• Unlimited messages (no daily limit)\n` +
+    `• Premium agents (Debug Pro, Health Coach, Finance Advisor)\n` +
+    `• Priority response speed\n` +
+    `• Conversation memory across sessions\n\n` +
+    `Choose a plan:`,
+    { parse_mode: "Markdown", reply_markup: keyboard },
+  );
+});
+
+// Buy Pro callbacks
+bot.callbackQuery("show_pro", async (ctx) => {
+  await ctx.answerCallbackQuery();
+  const user = ctx.from;
+
+  const plan = await getUserPlan(user.id);
+  if (plan === "pro") {
+    await ctx.reply("✅ You're already on the *Pro* plan!", { parse_mode: "Markdown" });
+    return;
+  }
+
+  const keyboard = new InlineKeyboard()
+    .text("⭐ 100 Stars — 1 Month Pro", "buy_pro_100")
+    .row()
+    .text("⭐ 250 Stars — 3 Months Pro", "buy_pro_250");
+
+  await ctx.reply(
+    `⭐ *aman Pro*\n\n` +
+    `• Unlimited messages\n` +
+    `• Premium agents unlocked\n` +
+    `• Priority speed\n\n` +
+    `Choose a plan:`,
+    { parse_mode: "Markdown", reply_markup: keyboard },
+  );
+});
+
+bot.callbackQuery("buy_pro_100", async (ctx) => {
+  await ctx.answerCallbackQuery();
+  await ctx.replyWithInvoice(
+    "aman Pro — 1 Month",
+    "Unlimited messages, premium agents, priority speed for 30 days.",
+    "pro_1month",
+    "XTR",
+    [{ label: "aman Pro (1 Month)", amount: 100 }],
+  );
+});
+
+bot.callbackQuery("buy_pro_250", async (ctx) => {
+  await ctx.answerCallbackQuery();
+  await ctx.replyWithInvoice(
+    "aman Pro — 3 Months",
+    "Unlimited messages, premium agents, priority speed for 90 days.",
+    "pro_3months",
+    "XTR",
+    [{ label: "aman Pro (3 Months)", amount: 250 }],
+  );
+});
+
+// Payment handling
+bot.on("pre_checkout_query", async (ctx) => {
+  await ctx.answerPreCheckoutQuery(true);
+});
+
+bot.on("message:successful_payment", async (ctx) => {
+  const payment = ctx.message.successful_payment;
+  const user = ctx.from;
+  if (!user) return;
+
+  // Upgrade user plan via API
+  try {
+    await fetch(`${apiUrl}/api/users/me/agent`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ telegramId: user.id, plan: "pro" }),
+    });
+  } catch {}
+
+  // Also call a dedicated upgrade endpoint
+  try {
+    await fetch(`${apiUrl}/api/users/upgrade`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        telegramId: user.id,
+        plan: "pro",
+        payload: payment.invoice_payload,
+        chargeId: payment.telegram_payment_charge_id,
+        totalAmount: payment.total_amount,
+      }),
+    });
+  } catch {}
+
+  await ctx.reply(
+    `🎉 *Welcome to aman Pro!*\n\n` +
+    `✅ Unlimited messages — no daily limit\n` +
+    `✅ Premium agents unlocked\n` +
+    `✅ Priority response speed\n\n` +
+    `Enjoy your Pro experience!`,
+    { parse_mode: "Markdown" },
+  );
+});
+
+// /agent — switch agent
+bot.command("agent", async (ctx) => {
+  const user = ctx.from;
+  if (!user) return;
+
+  const agentName = ctx.match?.trim().toLowerCase();
+
+  if (!agentName) {
+    // Show agent picker
+    const current = userAgents.get(user.id) || "coding";
+    const currentAgent = AGENTS.find((a) => a.id === current);
+
+    const keyboard = new InlineKeyboard();
+    for (const agent of AGENTS) {
+      const label = agent.id === current
+        ? `${agent.icon} ${agent.name} ✓`
+        : `${agent.icon} ${agent.name}${agent.premium ? " ⭐" : ""}`;
+      keyboard.text(label, `switch_${agent.id}`).row();
+    }
+
+    await ctx.reply(
+      `Current agent: ${currentAgent?.icon} *${currentAgent?.name}*\n\nChoose a new agent:`,
+      { parse_mode: "Markdown", reply_markup: keyboard },
+    );
+    return;
+  }
+
+  // Try to match by name or id
+  const agent = AGENTS.find(
+    (a) => a.id === agentName || a.name.toLowerCase().includes(agentName),
+  );
+
+  if (!agent) {
+    await ctx.reply(`Agent "${agentName}" not found. Use /agent to see available agents.`);
+    return;
+  }
+
+  userAgents.set(user.id, agent.id);
+  await ctx.reply(
+    `${agent.icon} Switched to *${agent.name}*!\n\n_${agent.description}_`,
+    { parse_mode: "Markdown" },
+  );
+});
+
+// Agent switch callbacks
+for (const agent of AGENTS) {
+  bot.callbackQuery(`switch_${agent.id}`, async (ctx) => {
+    await ctx.answerCallbackQuery(`Switched to ${agent.name}`);
+    const user = ctx.from;
+    userAgents.set(user.id, agent.id);
+    await ctx.reply(
+      `${agent.icon} Switched to *${agent.name}*!\n\n_${agent.description}_\n\nSend me a message to start chatting.`,
+      { parse_mode: "Markdown" },
+    );
+  });
+
+  // Keep old select_ callbacks working too
+  bot.callbackQuery(`select_${agent.id}`, async (ctx) => {
+    await ctx.answerCallbackQuery(`Switched to ${agent.name}`);
+    const user = ctx.from;
+    userAgents.set(user.id, agent.id);
+    await ctx.reply(
+      `${agent.icon} Switched to *${agent.name}*!\n\nSend me a message to start chatting.`,
+      { parse_mode: "Markdown" },
+    );
+  });
+}
 
 // Browse agents callback
 bot.callbackQuery("browse_agents", async (ctx) => {
@@ -79,49 +299,44 @@ bot.callbackQuery("browse_agents", async (ctx) => {
 
   const agentList = AGENTS
     .filter((a) => !a.premium)
-    .map((a) => `${a.icon} *${a.name}* \u2014 ${a.description}`)
+    .map((a) => `${a.icon} *${a.name}* — ${a.description}`)
     .join("\n");
 
   const premiumList = AGENTS
     .filter((a) => a.premium)
-    .map((a) => `${a.icon} *${a.name}* \u2B50 \u2014 ${a.description}`)
+    .map((a) => `${a.icon} *${a.name}* ⭐ — ${a.description}`)
     .join("\n");
 
-  const keyboard = new InlineKeyboard().webApp("Open Full Catalog", miniAppUrl);
+  const keyboard = new InlineKeyboard()
+    .webApp("Open Full Catalog", miniAppUrl)
+    .row()
+    .text("Switch Agent", "switch_menu");
 
   await ctx.reply(
-    `\u{1F916} *Available Agents*\n\n` +
+    `🤖 *Available Agents*\n\n` +
     `*Free*\n${agentList}\n\n` +
-    `*Premium* \u2B50\n${premiumList}\n\n` +
-    `Open the mini app for the full experience:`,
-    {
-      parse_mode: "Markdown",
-      reply_markup: keyboard,
-    }
+    `*Premium* ⭐ (requires Pro)\n${premiumList}\n\n` +
+    `Use /agent <name> to switch, or open the mini app:`,
+    { parse_mode: "Markdown", reply_markup: keyboard },
   );
 });
 
-// Agent selection callbacks
-for (const agent of AGENTS) {
-  bot.callbackQuery(`select_${agent.id}`, async (ctx) => {
-    await ctx.answerCallbackQuery();
-    await ctx.reply(
-      `${agent.icon} Switched to *${agent.name}*\n\n` +
-      `_${agent.description}_\n\n` +
-      `Send me a message to start chatting! Your conversations are saved.`,
-      { parse_mode: "Markdown" }
-    );
-  });
-}
+bot.callbackQuery("switch_menu", async (ctx) => {
+  await ctx.answerCallbackQuery();
+  const keyboard = new InlineKeyboard();
+  for (const agent of AGENTS) {
+    keyboard.text(`${agent.icon} ${agent.name}${agent.premium ? " ⭐" : ""}`, `switch_${agent.id}`).row();
+  }
+  await ctx.reply("Choose an agent:", { reply_markup: keyboard });
+});
 
-// Handle text messages — chat with selected agent via API
+// Handle text messages — chat with selected agent
 bot.on("message:text", async (ctx) => {
   const userMessage = ctx.message.text;
   const user = ctx.from;
   if (!user) return;
 
-  // Default agent — could look up user's preference from API later
-  const agentId = "coding";
+  const agentId = userAgents.get(user.id) || "coding";
 
   await ctx.replyWithChatAction("typing");
 
@@ -134,7 +349,6 @@ bot.on("message:text", async (ctx) => {
     user.username,
   );
 
-  // Split long messages (Telegram limit: 4096 chars)
   if (response.length > 4000) {
     const chunks = response.match(/[\s\S]{1,4000}/g) || [response];
     for (const chunk of chunks) {
@@ -145,37 +359,27 @@ bot.on("message:text", async (ctx) => {
   }
 });
 
-// Stars payment handling
-bot.on("pre_checkout_query", async (ctx) => {
-  await ctx.answerPreCheckoutQuery(true);
-});
-
-bot.on("message:successful_payment", async (ctx) => {
-  const payment = ctx.message.successful_payment;
-  await ctx.reply(
-    `\u{1F389} Payment successful! Thank you for upgrading to Pro.\n\n` +
-    `You now have unlimited access to all agents and memory features.`
-  );
-});
-
-// /help command
+// /help
 bot.command("help", async (ctx) => {
   await ctx.reply(
-    `*aman \u2014 AI Companion*\n\n` +
-    `Commands:\n` +
-    `/start \u2014 Welcome & launch mini app\n` +
-    `/agents \u2014 Browse available agents\n` +
-    `/help \u2014 Show this help\n\n` +
-    `Or just type a message to chat with your selected agent!`,
-    { parse_mode: "Markdown" }
+    `*aman — AI Companion*\n\n` +
+    `*Commands:*\n` +
+    `/start — Welcome & launch mini app\n` +
+    `/agent — Switch active agent\n` +
+    `/agent <name> — Quick switch (e.g. /agent daily)\n` +
+    `/pro — Upgrade to Pro (unlimited + premium agents)\n` +
+    `/agents — Browse all agents\n` +
+    `/help — Show this help\n\n` +
+    `Or just type a message to chat with your active agent!`,
+    { parse_mode: "Markdown" },
   );
 });
 
-// /agents command
+// /agents
 bot.command("agents", async (ctx) => {
   const keyboard = new InlineKeyboard();
   for (const agent of AGENTS) {
-    keyboard.text(`${agent.icon} ${agent.name}`, `select_${agent.id}`).row();
+    keyboard.text(`${agent.icon} ${agent.name}${agent.premium ? " ⭐" : ""}`, `switch_${agent.id}`).row();
   }
   await ctx.reply("Choose an agent:", { reply_markup: keyboard });
 });

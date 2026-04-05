@@ -4,6 +4,7 @@ import Anthropic from "@anthropic-ai/sdk";
 import { AGENTS } from "@aman-tg/shared";
 import {
   upsertUser,
+  getUser,
   getOrCreateConversation,
   getMessages,
   saveMessage,
@@ -49,6 +50,18 @@ app.post("/", async (c) => {
         limit: usage.limit,
         plan: usage.plan,
       }, 429);
+    }
+  }
+
+  // Gate premium agents behind Pro plan
+  if (agent.premium && userId) {
+    const user = getUser(userId);
+    if (user && user.plan === "free") {
+      return c.json({
+        error: "Premium agent requires Pro plan",
+        agent: agent.name,
+        plan: "free",
+      }, 403);
     }
   }
 
