@@ -11,6 +11,7 @@ if (!token) {
 
 const miniAppUrl = process.env.MINI_APP_URL || "https://aman.kooleklabs.com";
 const apiUrl = process.env.API_URL || "http://localhost:3000";
+const OPERATOR_CHAT_ID = Number(process.env.OPERATOR_CHAT_ID) || 0;
 
 // Track selected agent per user (in-memory, resets on restart — DB is source of truth)
 const userAgents = new Map<number, string>();
@@ -75,6 +76,35 @@ async function getUserPlan(telegramId: number): Promise<string> {
 }
 
 const bot = new Bot(token);
+
+async function sendOrderNotification(
+  shortId: string,
+  merchantName: string,
+  merchantAddress: string,
+  userName: string,
+  username: string | undefined,
+  items: { name: string; qty: number; price: number }[],
+  total: number,
+  notes: string,
+) {
+  if (!OPERATOR_CHAT_ID) return;
+  const itemLines = items.map((i) => `  ${i.name} (RM${i.price.toFixed(2)}) × ${i.qty}`).join("\n");
+  const text =
+    `🆕 *New Order #${shortId}*\n\n` +
+    `📍 ${merchantName}\n` +
+    `   ${merchantAddress}\n` +
+    `👤 ${userName}${username ? ` (@${username})` : ""}\n\n` +
+    `🛒 Items:\n${itemLines}\n\n` +
+    `💰 Total: *RM${total.toFixed(2)}*\n` +
+    (notes ? `📝 "${notes}"\n\n` : "\n") +
+    `Reply:\n/confirm ${shortId}\n/cancel ${shortId} reason`;
+
+  try {
+    await bot.api.sendMessage(OPERATOR_CHAT_ID, text, { parse_mode: "Markdown" });
+  } catch (e) {
+    console.error("Failed to send operator notification:", e);
+  }
+}
 
 // ── Persistent reply keyboard (always visible at bottom) ──
 const mainKeyboard = new Keyboard()
@@ -450,6 +480,122 @@ bot.hears("⭐ Go Pro", async (ctx) => {
   );
 });
 
+// --- Bila Siap? Operator Commands ---
+async function handleOperatorCommand(ctx: any, command: string, args: string) {
+  if (ctx.from?.id !== OPERATOR_CHAT_ID) return;
+
+  const parts = args.trim().split(/\s+/);
+  const shortId = parts[0]?.toUpperCase();
+
+  if (command === "orders") {
+    // List today's active orders
+    try {
+      await ctx.reply("Check your Telegram notifications for active orders. Full dashboard coming soon!");
+    } catch (e) {
+      await ctx.reply(`Error: ${e}`);
+    }
+    return;
+  }
+
+  if (!shortId) {
+    await ctx.reply(`Usage: /${command} <order_id>`);
+    return;
+  }
+
+  const statusMap: Record<string, string> = {
+    confirm: "confirmed",
+    preparing: "preparing",
+    ready: "ready",
+    done: "completed",
+    cancel: "cancelled",
+  };
+
+  const newStatus = statusMap[command];
+  if (!newStatus) return;
+
+  try {
+    const adminToken = process.env.ADMIN_TOKEN || "admin";
+    const res = await fetch(`${apiUrl}/api/orders/${shortId}/status`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json", "x-admin-token": adminToken },
+      body: JSON.stringify({ status: newStatus }),
+    });
+
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      await ctx.reply(`Failed: ${(err as any).error || res.statusText}`);
+      return;
+    }
+
+    const data = (await res.json()) as { success: boolean; short_id: string; status: string; telegram_id: number };
+
+    // Notify customer
+    const statusMessages: Record<string, string> = {
+      confirmed: "✅ Order confirmed! Tengah prepare dah.",
+      preparing: "👨‍🍳 Your food is being prepared...",
+      ready: "🎉 Siap! Come and pick up. Bayar kat sana ya.",
+      completed: "😋 Done! Hope you enjoyed it!",
+      cancelled: `😔 Sorry, order cancelled.${parts.length > 1 ? " Reason: " + parts.slice(1).join(" ") : ""} Nak try yang lain?`,
+    };
+
+    if (data.telegram_id) {
+      try {
+        await bot.api.sendMessage(
+          data.telegram_id,
+          `Order #${data.short_id}: ${statusMessages[newStatus] || `Status updated to ${newStatus}`}`,
+        );
+      } catch (e) {
+        console.error("Failed to notify customer:", e);
+      }
+    }
+
+    await ctx.reply(`✅ Order #${shortId} → ${newStatus}`);
+  } catch (e) {
+    await ctx.reply(`Error: ${e}`);
+  }
+}
+
+// Register operator commands
+for (const cmd of ["confirm", "preparing", "ready", "done", "cancel", "orders"]) {
+  bot.command(cmd, (ctx) => handleOperatorCommand(ctx, cmd, ctx.match || ""));
+}
+
+// /habis <item_id> — mark item unavailable
+bot.command("habis", async (ctx) => {
+  if (ctx.from?.id !== OPERATOR_CHAT_ID) return;
+  const itemId = (ctx.match || "").trim();
+  if (!itemId) { await ctx.reply("Usage: /habis <item_id>"); return; }
+  try {
+    const adminToken = process.env.ADMIN_TOKEN || "admin";
+    await fetch(`${apiUrl}/api/admin/items/${itemId}/availability`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "x-admin-token": adminToken },
+      body: JSON.stringify({ is_available: false }),
+    });
+    await ctx.reply("✅ Item marked as habis");
+  } catch (e) {
+    await ctx.reply(`Error: ${e}`);
+  }
+});
+
+// /buka <item_id> — mark item available
+bot.command("buka", async (ctx) => {
+  if (ctx.from?.id !== OPERATOR_CHAT_ID) return;
+  const itemId = (ctx.match || "").trim();
+  if (!itemId) { await ctx.reply("Usage: /buka <item_id>"); return; }
+  try {
+    const adminToken = process.env.ADMIN_TOKEN || "admin";
+    await fetch(`${apiUrl}/api/admin/items/${itemId}/availability`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "x-admin-token": adminToken },
+      body: JSON.stringify({ is_available: true }),
+    });
+    await ctx.reply("✅ Item marked as available");
+  } catch (e) {
+    await ctx.reply(`Error: ${e}`);
+  }
+});
+
 // Handle all messages (text, photos, files, voice, etc.) — redirect to Mini App
 bot.on("message", async (ctx) => {
   // Only respond in private chats
@@ -596,3 +742,24 @@ bot.start({
     console.log(`Bot @${info.username} is running!`);
   },
 });
+
+// Poll for new order notifications every 5 seconds
+setInterval(async () => {
+  if (!OPERATOR_CHAT_ID) return;
+  try {
+    const adminToken = process.env.ADMIN_TOKEN || "admin";
+    const res = await fetch(`${apiUrl}/api/orders/pending-notifications`, {
+      headers: { "x-admin-token": adminToken },
+    });
+    if (!res.ok) return;
+    const data = (await res.json()) as { notifications: any[] };
+    for (const n of data.notifications) {
+      await sendOrderNotification(
+        n.shortId, n.merchantName, n.merchantAddress,
+        "Customer", undefined, n.items, n.total, n.notes,
+      );
+    }
+  } catch {
+    // Silently ignore polling errors
+  }
+}, 5000);
