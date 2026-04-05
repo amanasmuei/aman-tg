@@ -307,8 +307,15 @@ When the user mentions something they need to do, remember, or track — proacti
       }
     } catch (err) {
       const errMsg = err instanceof Error ? err.message : "LLM error";
-      console.error(`[LLM] Error for user ${userId}:`, errMsg);
-      await stream.write(`\n\n[Error: ${errMsg}]`);
+      console.error(`[LLM] Error for user ${userId} (${agentId}):`, errMsg);
+      // Show friendly message based on error type
+      if (errMsg.includes("timed out")) {
+        await stream.write("\n\nSorry, the response took too long. Please try again.");
+      } else if (errMsg.includes("API error")) {
+        await stream.write("\n\nSorry, the AI service is temporarily busy. Please try again in a moment.");
+      } else {
+        await stream.write("\n\nSorry, something went wrong. Please try again.");
+      }
     }
   });
 });

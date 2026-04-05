@@ -234,11 +234,14 @@ export function ChatView({ agent, onBack, conversationId }: Props) {
           );
         }
       }
-    } catch {
+    } catch (err) {
+      const isNetwork = err instanceof TypeError && (err.message.includes("fetch") || err.message.includes("network"));
       const errorMsg: ChatMessage = {
         id: crypto.randomUUID(),
         role: "assistant",
-        content: t("somethingWrong"),
+        content: isNetwork
+          ? "Unable to connect. Please check your internet and try again."
+          : t("somethingWrong"),
         timestamp: Date.now(),
         agentId: agent.id,
       };
