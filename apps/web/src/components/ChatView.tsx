@@ -34,9 +34,13 @@ export function ChatView({ agent, onBack }: Props) {
     setLoading(true);
 
     try {
+      const initData = window.Telegram?.WebApp?.initData || "";
       const res = await fetch("/api/chat", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          "x-telegram-init-data": initData,
+        },
         body: JSON.stringify({
           agentId: agent.id,
           message: text,

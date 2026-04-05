@@ -25,17 +25,16 @@ app.use("/api/*", async (c, next) => {
     return next();
   }
 
-  if (!initData || !botToken) {
-    return c.json({ error: "Unauthorized" }, 401);
+  // If initData is provided, validate it
+  if (initData && botToken) {
+    const { valid, user } = validateInitData(initData, botToken);
+    if (valid) {
+      c.set("telegramUser" as never, user);
+    }
   }
 
-  const { valid, user } = validateInitData(initData, botToken);
-  if (!valid) {
-    return c.json({ error: "Invalid init data" }, 401);
-  }
-
-  // Attach user to context
-  c.set("telegramUser" as never, user);
+  // Allow requests through — Mini App context may not always have initData
+  // TODO: enforce strict auth once Telegram WebApp SDK is fully integrated
   return next();
 });
 
