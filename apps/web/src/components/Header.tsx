@@ -72,7 +72,14 @@ export function Header({ onReset }: { onReset?: () => void } = {}) {
   };
 
   return (
-    <div className="px-4 pt-6 pb-4">
+    <div
+      className="pb-4"
+      style={{
+        paddingTop: "calc(env(safe-area-inset-top, 0px) + var(--tg-safe-top, 0px) + 16px)",
+        paddingRight: "calc(env(safe-area-inset-right, 0px) + var(--tg-safe-right, 0px) + 16px)",
+        paddingLeft: "calc(env(safe-area-inset-left, 0px) + var(--tg-safe-left, 0px) + 16px)",
+      }}
+    >
       <div className="flex items-center gap-3 mb-1">
         <div className="text-2xl font-bold tracking-tight">aman</div>
         {usage?.plan === "pro" ? (
