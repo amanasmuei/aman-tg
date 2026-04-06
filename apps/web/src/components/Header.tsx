@@ -12,7 +12,7 @@ export function Header({ onReset }: { onReset?: () => void } = {}) {
   const [resetting, setResetting] = useState(false);
 
   useEffect(() => {
-    const tg = window.Telegram?.WebApp;
+    const tg = window.Telegram?.WebApp as any;
     const telegramId = tg?.initDataUnsafe?.user?.id;
     if (!telegramId) return;
 
@@ -36,7 +36,7 @@ export function Header({ onReset }: { onReset?: () => void } = {}) {
   const isLow = usage && usage.plan === "free" && usage.messagesLimit > 0 && usage.messagesUsed >= usage.messagesLimit - 5;
 
   const handleReset = () => {
-    const tg = window.Telegram?.WebApp;
+    const tg = window.Telegram?.WebApp as any;
     const telegramId = tg?.initDataUnsafe?.user?.id;
     if (!telegramId) return;
 
