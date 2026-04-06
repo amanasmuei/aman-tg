@@ -1,5 +1,5 @@
 import { Hono } from "hono";
-import { getDb, upsertMerchant, upsertServiceItem, updateItemAvailability } from "../db.js";
+import { getDb, upsertMerchant, upsertServiceItem, updateItemAvailability, getAllMerchants, setMerchantActive, deleteMerchantCascade, getAllServiceItems } from "../db.js";
 
 const app = new Hono();
 
@@ -129,11 +129,36 @@ app.get("/users", (c) => {
   });
 });
 
+// GET /merchants — list ALL merchants (active + inactive) with item counts
+app.get("/merchants", (c) => {
+  const merchants = getAllMerchants();
+  return c.json({ merchants });
+});
+
 // POST /merchants — upsert merchant
 app.post("/merchants", async (c) => {
   const data = await c.req.json();
   const merchant = upsertMerchant(data);
   return c.json({ merchant });
+});
+
+// PATCH /merchants/:id/active — toggle active status
+app.patch("/merchants/:id/active", async (c) => {
+  const { is_active } = await c.req.json<{ is_active: boolean }>();
+  setMerchantActive(c.req.param("id"), is_active);
+  return c.json({ ok: true });
+});
+
+// DELETE /merchants/:id — delete merchant + cascade items
+app.delete("/merchants/:id", (c) => {
+  deleteMerchantCascade(c.req.param("id"));
+  return c.json({ ok: true });
+});
+
+// GET /merchants/:id/items — list all items for a merchant (available + unavailable)
+app.get("/merchants/:id/items", (c) => {
+  const items = getAllServiceItems(c.req.param("id"));
+  return c.json({ items });
 });
 
 // POST /service-items — upsert service item

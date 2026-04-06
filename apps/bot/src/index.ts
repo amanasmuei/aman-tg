@@ -596,6 +596,315 @@ bot.command("buka", async (ctx) => {
   }
 });
 
+// ── Merchant Management Commands ──────────────────────
+
+// Helper: parse hours string "0630-1100" → {open:"06:30",close:"11:00"}
+function parseHours(h: string): { open: string; close: string } {
+  const clean = h.replace(/\s/g, "");
+  const [openRaw, closeRaw] = clean.split("-");
+  const fmt = (s: string) => `${s.slice(0, 2)}:${s.slice(2, 4)}`;
+  return { open: fmt(openRaw || "0000"), close: fmt(closeRaw || "0000") };
+}
+
+// Helper: fetch all merchants from admin API
+async function fetchAllMerchants(adminToken: string): Promise<any[]> {
+  const res = await fetch(`${apiUrl}/api/admin/merchants`, {
+    headers: { "x-admin-token": adminToken },
+  });
+  if (!res.ok) throw new Error(`API error ${res.status}`);
+  const data = await res.json() as { merchants: any[] };
+  return data.merchants;
+}
+
+// Helper: find merchant by ID prefix or name substring
+function findMerchant(merchants: any[], ref: string): { found: any | null; multiple: any[] } {
+  const q = ref.toLowerCase();
+  // Exact ID prefix match (8+ chars)
+  const byId = merchants.filter((m: any) => m.id.toLowerCase().startsWith(q));
+  if (byId.length === 1) return { found: byId[0], multiple: [] };
+  if (byId.length > 1) return { found: null, multiple: byId };
+  // Name substring match
+  const byName = merchants.filter((m: any) => m.name.toLowerCase().includes(q));
+  if (byName.length === 1) return { found: byName[0], multiple: [] };
+  if (byName.length > 1) return { found: null, multiple: byName };
+  return { found: null, multiple: [] };
+}
+
+// /add_merchant <name> | <type> | <address> | <phone> | <hours> | <off_days> | <notes>
+bot.command("add_merchant", async (ctx) => {
+  if (ctx.from?.id !== OPERATOR_CHAT_ID) return;
+  const raw = (ctx.match || "").trim();
+  if (!raw) {
+    await ctx.reply(
+      "Usage: /add_merchant <name> | <type> | <address> | <phone> | <hours> | <off_days> | <notes>\n\n" +
+      "type: home_food or kedai_makan\n" +
+      "hours: HHMM-HHMM (e.g. 0630-1100)\n" +
+      "off_days: comma-separated (e.g. sunday,friday) or leave empty",
+    );
+    return;
+  }
+  const parts = raw.split("|").map((s) => s.trim());
+  if (parts.length < 5) {
+    await ctx.reply("Need at least 5 fields: name | type | address | phone | hours");
+    return;
+  }
+  const [name, type, address, phone, hours, offDaysRaw = "", notes = ""] = parts;
+  if (!["home_food", "kedai_makan"].includes(type)) {
+    await ctx.reply("type must be home_food or kedai_makan");
+    return;
+  }
+  const offDays = offDaysRaw
+    ? offDaysRaw.split(",").map((d) => d.trim().toLowerCase()).filter(Boolean)
+    : [];
+  const parsedHours = parseHours(hours);
+  const operatingHours = JSON.stringify({ open: parsedHours.open, close: parsedHours.close, off_days: offDays });
+  const { randomUUID } = await import("node:crypto");
+  const id = randomUUID();
+  try {
+    const adminToken = process.env.ADMIN_TOKEN || "admin";
+    const res = await fetch(`${apiUrl}/api/admin/merchants`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "x-admin-token": adminToken },
+      body: JSON.stringify({
+        id,
+        name,
+        description: "",
+        type,
+        subcategory: "",
+        address,
+        phone,
+        operating_hours: operatingHours,
+        is_active: 1,
+        notes,
+      }),
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      await ctx.reply(`Failed: ${(err as any).error || res.statusText}`);
+      return;
+    }
+    await ctx.reply(
+      `Merchant added!\nName: ${name}\nID: ${id.slice(0, 8)}\nType: ${type}\nHours: ${parsedHours.open}–${parsedHours.close}` +
+      (offDays.length ? `\nOff: ${offDays.join(", ")}` : ""),
+    );
+  } catch (e) {
+    await ctx.reply(`Error: ${e}`);
+  }
+});
+
+// /add_item <merchant_ref> | <name> | <price> | <category> | <popular>
+bot.command("add_item", async (ctx) => {
+  if (ctx.from?.id !== OPERATOR_CHAT_ID) return;
+  const raw = (ctx.match || "").trim();
+  if (!raw) {
+    await ctx.reply(
+      "Usage: /add_item <merchant_ref> | <name> | <price> | <category> | <popular>\n\n" +
+      "merchant_ref: ID (8+ chars) or name substring\n" +
+      "category: main | side | drink | addon | service | package\n" +
+      "popular: 1 or 0 (default 0)",
+    );
+    return;
+  }
+  const parts = raw.split("|").map((s) => s.trim());
+  if (parts.length < 4) {
+    await ctx.reply("Need at least 4 fields: merchant_ref | name | price | category");
+    return;
+  }
+  const [merchantRef, name, priceRaw, category, popularRaw = "0"] = parts;
+  const price = parseFloat(priceRaw);
+  if (isNaN(price)) { await ctx.reply("price must be a number"); return; }
+  const validCategories = ["main", "side", "drink", "addon", "service", "package"];
+  if (!validCategories.includes(category)) {
+    await ctx.reply(`category must be one of: ${validCategories.join(", ")}`);
+    return;
+  }
+  const popular = popularRaw === "1" ? 1 : 0;
+  try {
+    const adminToken = process.env.ADMIN_TOKEN || "admin";
+    const merchants = await fetchAllMerchants(adminToken);
+    const { found, multiple } = findMerchant(merchants, merchantRef);
+    if (!found && multiple.length === 0) {
+      await ctx.reply(`No merchant found matching "${merchantRef}"`);
+      return;
+    }
+    if (!found) {
+      const list = multiple.map((m: any) => `${m.id.slice(0, 8)} ${m.name}`).join("\n");
+      await ctx.reply(`Multiple matches found — be more specific:\n${list}`);
+      return;
+    }
+    const { randomUUID } = await import("node:crypto");
+    const id = randomUUID();
+    const res = await fetch(`${apiUrl}/api/admin/service-items`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "x-admin-token": adminToken },
+      body: JSON.stringify({
+        id,
+        merchant_id: found.id,
+        name,
+        description: "",
+        price,
+        category,
+        is_available: 1,
+        popular,
+        image_url: null,
+      }),
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      await ctx.reply(`Failed: ${(err as any).error || res.statusText}`);
+      return;
+    }
+    await ctx.reply(`Item added!\n${name} — RM${price.toFixed(2)}\nMerchant: ${found.name}\nID: ${id.slice(0, 8)}`);
+  } catch (e) {
+    await ctx.reply(`Error: ${e}`);
+  }
+});
+
+// /list_merchants
+bot.command("list_merchants", async (ctx) => {
+  if (ctx.from?.id !== OPERATOR_CHAT_ID) return;
+  try {
+    const adminToken = process.env.ADMIN_TOKEN || "admin";
+    const merchants = await fetchAllMerchants(adminToken);
+    if (merchants.length === 0) {
+      await ctx.reply("No merchants yet. Use /add_merchant to add one.");
+      return;
+    }
+    const lines = merchants.map((m: any) => {
+      const status = m.is_active ? "✅" : "❌";
+      const closed = m.is_active ? "" : " [TUTUP]";
+      return `${status} ${m.id.slice(0, 8)} ${m.name} (${m.type}) — ${m.item_count} items${closed}`;
+    });
+    await ctx.reply(`Merchants:\n${lines.join("\n")}`);
+  } catch (e) {
+    await ctx.reply(`Error: ${e}`);
+  }
+});
+
+// /list_items <merchant_ref>
+bot.command("list_items", async (ctx) => {
+  if (ctx.from?.id !== OPERATOR_CHAT_ID) return;
+  const merchantRef = (ctx.match || "").trim();
+  if (!merchantRef) {
+    await ctx.reply("Usage: /list_items <merchant_ref>");
+    return;
+  }
+  try {
+    const adminToken = process.env.ADMIN_TOKEN || "admin";
+    const merchants = await fetchAllMerchants(adminToken);
+    const { found, multiple } = findMerchant(merchants, merchantRef);
+    if (!found && multiple.length === 0) {
+      await ctx.reply(`No merchant found matching "${merchantRef}"`);
+      return;
+    }
+    if (!found) {
+      const list = multiple.map((m: any) => `${m.id.slice(0, 8)} ${m.name}`).join("\n");
+      await ctx.reply(`Multiple matches — be more specific:\n${list}`);
+      return;
+    }
+    const itemsRes = await fetch(`${apiUrl}/api/admin/merchants/${found.id}/items`, {
+      headers: { "x-admin-token": adminToken },
+    });
+    if (!itemsRes.ok) {
+      await ctx.reply(`Failed to fetch items: ${itemsRes.statusText}`);
+      return;
+    }
+    const itemsData = await itemsRes.json() as { items: any[] };
+    const items = itemsData.items;
+    if (items.length === 0) {
+      await ctx.reply(`${found.name} has no items yet. Use /add_item to add some.`);
+      return;
+    }
+    const lines = items.map((item: any) => {
+      const star = item.popular ? "⭐" : item.is_available ? " " : "❌";
+      return `${star} ${item.id.slice(0, 8)} | ${item.name} RM${item.price.toFixed(2)}`;
+    });
+    await ctx.reply(`Items for ${found.name}:\n${lines.join("\n")}`);
+  } catch (e) {
+    await ctx.reply(`Error: ${e}`);
+  }
+});
+
+// /close_merchant <ref>
+bot.command("close_merchant", async (ctx) => {
+  if (ctx.from?.id !== OPERATOR_CHAT_ID) return;
+  const ref = (ctx.match || "").trim();
+  if (!ref) { await ctx.reply("Usage: /close_merchant <merchant_ref>"); return; }
+  try {
+    const adminToken = process.env.ADMIN_TOKEN || "admin";
+    const merchants = await fetchAllMerchants(adminToken);
+    const { found, multiple } = findMerchant(merchants, ref);
+    if (!found && multiple.length === 0) { await ctx.reply(`No merchant found matching "${ref}"`); return; }
+    if (!found) {
+      const list = multiple.map((m: any) => `${m.id.slice(0, 8)} ${m.name}`).join("\n");
+      await ctx.reply(`Multiple matches — be more specific:\n${list}`);
+      return;
+    }
+    const res = await fetch(`${apiUrl}/api/admin/merchants/${found.id}/active`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json", "x-admin-token": adminToken },
+      body: JSON.stringify({ is_active: false }),
+    });
+    if (!res.ok) { await ctx.reply(`Failed: ${res.statusText}`); return; }
+    await ctx.reply(`❌ ${found.name} is now CLOSED (inactive).`);
+  } catch (e) {
+    await ctx.reply(`Error: ${e}`);
+  }
+});
+
+// /open_merchant <ref>
+bot.command("open_merchant", async (ctx) => {
+  if (ctx.from?.id !== OPERATOR_CHAT_ID) return;
+  const ref = (ctx.match || "").trim();
+  if (!ref) { await ctx.reply("Usage: /open_merchant <merchant_ref>"); return; }
+  try {
+    const adminToken = process.env.ADMIN_TOKEN || "admin";
+    const merchants = await fetchAllMerchants(adminToken);
+    const { found, multiple } = findMerchant(merchants, ref);
+    if (!found && multiple.length === 0) { await ctx.reply(`No merchant found matching "${ref}"`); return; }
+    if (!found) {
+      const list = multiple.map((m: any) => `${m.id.slice(0, 8)} ${m.name}`).join("\n");
+      await ctx.reply(`Multiple matches — be more specific:\n${list}`);
+      return;
+    }
+    const res = await fetch(`${apiUrl}/api/admin/merchants/${found.id}/active`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json", "x-admin-token": adminToken },
+      body: JSON.stringify({ is_active: true }),
+    });
+    if (!res.ok) { await ctx.reply(`Failed: ${res.statusText}`); return; }
+    await ctx.reply(`✅ ${found.name} is now OPEN (active).`);
+  } catch (e) {
+    await ctx.reply(`Error: ${e}`);
+  }
+});
+
+// /delete_merchant <ref>
+bot.command("delete_merchant", async (ctx) => {
+  if (ctx.from?.id !== OPERATOR_CHAT_ID) return;
+  const ref = (ctx.match || "").trim();
+  if (!ref) { await ctx.reply("Usage: /delete_merchant <merchant_ref>"); return; }
+  try {
+    const adminToken = process.env.ADMIN_TOKEN || "admin";
+    const merchants = await fetchAllMerchants(adminToken);
+    const { found, multiple } = findMerchant(merchants, ref);
+    if (!found && multiple.length === 0) { await ctx.reply(`No merchant found matching "${ref}"`); return; }
+    if (!found) {
+      const list = multiple.map((m: any) => `${m.id.slice(0, 8)} ${m.name}`).join("\n");
+      await ctx.reply(`Multiple matches — be more specific:\n${list}`);
+      return;
+    }
+    const res = await fetch(`${apiUrl}/api/admin/merchants/${found.id}`, {
+      method: "DELETE",
+      headers: { "x-admin-token": adminToken },
+    });
+    if (!res.ok) { await ctx.reply(`Failed: ${res.statusText}`); return; }
+    await ctx.reply(`Deleted merchant ${found.name} (${found.id.slice(0, 8)}) and all its items.`);
+  } catch (e) {
+    await ctx.reply(`Error: ${e}`);
+  }
+});
+
 // Handle all messages (text, photos, files, voice, etc.) — redirect to Mini App
 bot.on("message", async (ctx) => {
   // Only respond in private chats

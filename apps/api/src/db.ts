@@ -680,6 +680,41 @@ export function updateItemAvailability(itemId: string, isAvailable: boolean): vo
     .run(isAvailable ? 1 : 0, Date.now(), itemId);
 }
 
+export function getAllMerchants(): (DbMerchant & { item_count: number })[] {
+  const db = getDb();
+  return db.prepare(`
+    SELECT m.*, COUNT(si.id) as item_count
+    FROM merchants m
+    LEFT JOIN service_items si ON si.merchant_id = m.id
+    GROUP BY m.id
+    ORDER BY m.name
+  `).all() as (DbMerchant & { item_count: number })[];
+}
+
+export function getAllServiceItems(merchantId: string): DbServiceItem[] {
+  const db = getDb();
+  return db.prepare(
+    "SELECT * FROM service_items WHERE merchant_id = ? ORDER BY popular DESC, name",
+  ).all(merchantId) as DbServiceItem[];
+}
+
+export function setMerchantActive(id: string, isActive: boolean): void {
+  const db = getDb();
+  db.prepare("UPDATE merchants SET is_active = ?, updated_at = ? WHERE id = ?")
+    .run(isActive ? 1 : 0, Date.now(), id);
+}
+
+export function deleteMerchantCascade(id: string): void {
+  const db = getDb();
+  const deleteItems = db.prepare("DELETE FROM service_items WHERE merchant_id = ?");
+  const deleteMerchant = db.prepare("DELETE FROM merchants WHERE id = ?");
+  const run = db.transaction(() => {
+    deleteItems.run(id);
+    deleteMerchant.run(id);
+  });
+  run();
+}
+
 // ── Orders ──────────────────────────────────────────
 
 export function generateShortId(): string {
