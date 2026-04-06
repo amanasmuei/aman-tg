@@ -33,9 +33,11 @@ interface Props {
   agent: Agent;
   onBack: () => void;
   conversationId?: string;
+  initialMerchantId?: string;
+  initialMerchantName?: string;
 }
 
-export function ChatView({ agent, onBack, conversationId }: Props) {
+export function ChatView({ agent, onBack, conversationId, initialMerchantId, initialMerchantName }: Props) {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
@@ -46,6 +48,7 @@ export function ChatView({ agent, onBack, conversationId }: Props) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [showScrollBtn, setShowScrollBtn] = useState(false);
   const chatContainerRef = useRef<HTMLDivElement>(null);
+  const merchantAutoSentRef = useRef(false);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -72,6 +75,90 @@ export function ChatView({ agent, onBack, conversationId }: Props) {
 
     return () => controller.abort();
   }, [agent.id, conversationId]);
+
+  // Auto-send initial merchant context message if coming from Kedai tab
+  useEffect(() => {
+    if (!initialMerchantId || !initialMerchantName) return;
+    if (merchantAutoSentRef.current) return;
+    // Wait until history load has a chance to run (messages may still be empty)
+    // We fire after a short tick so the history effect runs first
+    const timer = setTimeout(() => {
+      if (merchantAutoSentRef.current) return;
+      // Only auto-send if no messages loaded (fresh conversation)
+      setMessages((prev) => {
+        if (prev.length > 0) return prev;
+        merchantAutoSentRef.current = true;
+        const autoText = `Saya nak tengok menu ${initialMerchantName}`;
+        setInput(autoText);
+        // Use a micro-task to trigger send after state settles
+        setTimeout(() => {
+          setInput("");
+          const userMsg: ChatMessage = {
+            id: crypto.randomUUID(),
+            role: "user",
+            content: autoText,
+            timestamp: Date.now(),
+            agentId: agent.id,
+          };
+          setMessages((m) => [...m, userMsg]);
+          setLoading(true);
+
+          const tg = window.Telegram?.WebApp;
+          const initData = tg?.initData || "";
+          const body = {
+            agentId: agent.id,
+            message: autoText,
+            languageHint: "ms",
+            newConversation: true,
+            telegramId: tg?.initDataUnsafe?.user?.id,
+            firstName: tg?.initDataUnsafe?.user?.first_name,
+            lastName: tg?.initDataUnsafe?.user?.last_name,
+            username: tg?.initDataUnsafe?.user?.username,
+          };
+
+          fetch("/api/chat", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "x-telegram-init-data": initData,
+            },
+            body: JSON.stringify(body),
+          })
+            .then(async (res) => {
+              const reader = res.body?.getReader();
+              const decoder = new TextDecoder();
+              let assistantText = "";
+              const assistantMsg: ChatMessage = {
+                id: crypto.randomUUID(),
+                role: "assistant",
+                content: "",
+                timestamp: Date.now(),
+                agentId: agent.id,
+              };
+              setMessages((m) => [...m, assistantMsg]);
+              if (reader) {
+                while (true) {
+                  const { done, value } = await reader.read();
+                  if (done) break;
+                  assistantText += decoder.decode(value, { stream: true });
+                  setMessages((m) =>
+                    m.map((msg) =>
+                      msg.id === assistantMsg.id ? { ...msg, content: assistantText } : msg
+                    )
+                  );
+                }
+              }
+            })
+            .catch(() => {})
+            .finally(() => setLoading(false));
+        }, 0);
+        return prev;
+      });
+    }, 300);
+
+    return () => clearTimeout(timer);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialMerchantId, initialMerchantName]);
 
   const handleScroll = () => {
     const el = chatContainerRef.current;

@@ -6,18 +6,22 @@ import { AgentDetail } from "./components/AgentDetail";
 import { Header } from "./components/Header";
 import { Landing } from "./components/Landing";
 import { Onboarding } from "./components/Onboarding";
+import { KedaiList } from "./components/KedaiList";
 import { detectLocale, t } from "./lib/i18n";
 import { AGENTS } from "@aman-tg/shared";
 import type { Agent } from "@aman-tg/shared";
 
 type Page = "home" | "chat" | "detail" | "history";
+type HomeTab = "kedai" | "agents";
 
 export function App() {
   // Auto-detect locale from Telegram user
   detectLocale();
   const [page, setPage] = useState<Page>("home");
+  const [homeTab, setHomeTab] = useState<HomeTab>("kedai");
   const [selectedAgent, setSelectedAgent] = useState<Agent | null>(null);
   const [selectedConversationId, setSelectedConversationId] = useState<string | undefined>();
+  const [selectedMerchant, setSelectedMerchant] = useState<{ id: string; name: string } | null>(null);
   const [userPlan, setUserPlan] = useState("free");
   const [showOnboarding, setShowOnboarding] = useState(false);
 
@@ -61,7 +65,17 @@ export function App() {
   const handleBack = () => {
     setSelectedAgent(null);
     setSelectedConversationId(undefined);
+    setSelectedMerchant(null);
     setPage("home");
+  };
+
+  const handleSelectMerchant = (merchantId: string, merchantName: string) => {
+    const jiran = AGENTS.find((a) => a.id === "jiran");
+    if (!jiran) return;
+    setSelectedMerchant({ id: merchantId, name: merchantName });
+    setSelectedAgent(jiran);
+    setSelectedConversationId(undefined);
+    setPage("chat");
   };
 
   const handleOnboardingComplete = (agent: Agent) => {
@@ -118,11 +132,44 @@ export function App() {
               <span className="ml-auto text-xs" style={{ color: "var(--tg-theme-hint-color)" }}>{t("inviteReward")}</span>
             </button>
           </div>
-          <AgentGrid onSelect={handleSelectAgent} userPlan={userPlan} />
+          {/* Tab switcher */}
+          <div className="flex gap-2 px-4 mb-4">
+            <button
+              onClick={() => setHomeTab("kedai")}
+              className="flex-1 py-2 rounded-xl text-sm font-medium transition-all"
+              style={{
+                background: homeTab === "kedai" ? "var(--tg-theme-button-color)" : "var(--tg-theme-secondary-bg-color)",
+                color: homeTab === "kedai" ? "var(--tg-theme-button-text-color)" : "var(--tg-theme-text-color)",
+              }}
+            >
+              🏪 Kedai
+            </button>
+            <button
+              onClick={() => setHomeTab("agents")}
+              className="flex-1 py-2 rounded-xl text-sm font-medium transition-all"
+              style={{
+                background: homeTab === "agents" ? "var(--tg-theme-button-color)" : "var(--tg-theme-secondary-bg-color)",
+                color: homeTab === "agents" ? "var(--tg-theme-button-text-color)" : "var(--tg-theme-text-color)",
+              }}
+            >
+              🤖 Agents
+            </button>
+          </div>
+          {homeTab === "kedai" ? (
+            <KedaiList onSelectMerchant={handleSelectMerchant} />
+          ) : (
+            <AgentGrid onSelect={handleSelectAgent} userPlan={userPlan} />
+          )}
         </>
       )}
       {page === "chat" && selectedAgent && (
-        <ChatView agent={selectedAgent} onBack={handleBack} conversationId={selectedConversationId} />
+        <ChatView
+          agent={selectedAgent}
+          onBack={handleBack}
+          conversationId={selectedConversationId}
+          initialMerchantId={selectedMerchant?.id}
+          initialMerchantName={selectedMerchant?.name}
+        />
       )}
       {page === "detail" && selectedAgent && (
         <AgentDetail
