@@ -1,14 +1,42 @@
 /**
- * Guardrails layer — portable arules integration for aman Mini App.
+ * Guardrails layer — thin wrapper around @aman_asmuei/arules-core.
  *
- * Parses rules.md and provides:
- * - loadRules(): parse rules into categories
- * - checkAction(): check if an action violates any "Never" rules
- * - getGuardrailsPrompt(): inject rules into agent system prompt
+ * Phase 7 of the aman engine v1 build sequence: this file used to contain
+ * a parallel implementation of the rule parser, keyword-matching algorithm,
+ * prompt injection format, and tool-call enforcement. ALL of that logic now
+ * lives in @aman_asmuei/arules-core (where it was originally upstreamed
+ * FROM during Phase 3).
+ *
+ * What stays in this file:
+ *   - Loading the local apps/api/rules.md (deployment-local, not ~/.arules)
+ *   - mtime-based caching so a long-running server doesn't re-parse on
+ *     every check
+ *   - aman-tg's tool-specific guards (private IP blocking for fetch_url)
+ *     that are NOT part of the rules engine — they're hardcoded protections
+ *     that apply regardless of whether a rule matches
+ *
+ * What moved to arules-core:
+ *   - parseRules / parseRulesetFull (line-by-line markdown parser, strikethrough handling)
+ *   - checkActionPure (keyword-overlap algorithm with prohibition detection)
+ *   - getGuardrailsPromptPure (system prompt block builder)
+ *   - checkToolCallPure (rule-driven tool call check)
+ *
+ * Behavior is preserved with one minor improvement: arules-core's stopword
+ * list is slightly broader than this file's previous version (adds: into,
+ * your, yours, ours, those, these, such, very). This makes keyword matching
+ * marginally more accurate. The 2-keyword-overlap threshold is unchanged.
  */
 
-import fs from "node:fs";
-import path from "node:path";
+import * as fs from "node:fs";
+import * as path from "node:path";
+import {
+  type Ruleset,
+  parseRules,
+  checkActionPure,
+  checkToolCallPure,
+  getGuardrailsPromptPure,
+  type CheckActionResult,
+} from "@aman_asmuei/arules-core";
 
 interface RuleCategory {
   category: string;
@@ -19,146 +47,110 @@ interface RuleCategory {
 const __dirname = path.dirname(new URL(import.meta.url).pathname);
 const RULES_PATH = process.env.RULES_PATH || path.join(__dirname, "..", "rules.md");
 
-let _cachedRules: RuleCategory[] | null = null;
-let _cachedRulesContent: string | null = null;
+// ── Cached ruleset with mtime invalidation ─────────────────────────────────
+//
+// We keep the local cache (instead of going through arules-core's storage
+// layer) for two reasons:
+//
+//   1. The rules file lives at apps/api/rules.md inside aman-tg's deployment,
+//      not at ~/.arules — arules-core's storage backends point at the latter.
+//      Keeping a local file load lets aman-tg own its deployment shape.
+//   2. The aman-tg API is a long-running server. Re-reading and re-parsing
+//      rules.md on every checkAction call would be wasteful. The mtime check
+//      is essentially free.
+
+let _cachedRuleset: Ruleset | null = null;
 let _cachedMtime: number = 0;
 
-/**
- * Parse rules.md into structured categories.
- * Caches result and reloads if file changes.
- */
-export function loadRules(): RuleCategory[] {
-  // Check if file has changed
+function loadRuleset(): Ruleset | null {
   let mtime = 0;
   try {
     mtime = fs.statSync(RULES_PATH).mtimeMs;
   } catch {
-    return [];
+    return null;
   }
 
-  if (_cachedRules && mtime === _cachedMtime) return _cachedRules;
+  if (_cachedRuleset && mtime === _cachedMtime) {
+    return _cachedRuleset;
+  }
 
   try {
     const content = fs.readFileSync(RULES_PATH, "utf-8");
-    _cachedRulesContent = content;
+    _cachedRuleset = { content };
     _cachedMtime = mtime;
-    _cachedRules = parseRules(content);
-    console.log(`[GUARDRAILS] Loaded ${_cachedRules.length} rule categories from ${RULES_PATH}`);
-    return _cachedRules;
+    console.log(
+      `[GUARDRAILS] Loaded ruleset from ${RULES_PATH} (engine: arules-core)`,
+    );
+    return _cachedRuleset;
   } catch (err) {
     console.error(`[GUARDRAILS] Failed to load rules:`, err);
-    return [];
+    return null;
   }
-}
-
-function parseRules(content: string): RuleCategory[] {
-  const categories: RuleCategory[] = [];
-  const sections = content.split(/\n## /);
-
-  for (const section of sections) {
-    if (!section.trim()) continue;
-
-    const lines = section.split("\n");
-    const category = lines[0].replace(/^#+\s*/, "").trim();
-    if (!category) continue;
-
-    const rules: string[] = [];
-    for (let i = 1; i < lines.length; i++) {
-      const line = lines[i];
-      if (line.startsWith("- ")) {
-        const rule = line.slice(2).trim();
-        // Skip strikethrough (disabled) rules
-        if (rule.startsWith("~~") && rule.endsWith("~~")) continue;
-        if (rule) rules.push(rule);
-      }
-    }
-
-    if (rules.length > 0) {
-      categories.push({ category, rules });
-    }
-  }
-
-  return categories;
 }
 
 /**
- * Check if a proposed action violates any guardrails.
- * Focuses on "Never" rules and rules with prohibition keywords.
+ * Parse the local rules.md into structured rule categories.
+ *
+ * Returns the existing aman-tg shape `{ category, rules }` for backward
+ * compatibility with any caller that consumes this function — arules-core's
+ * canonical shape is `{ name, rules }`, mapped here.
  */
-export function checkAction(action: string): {
-  violations: string[];
-  safe: boolean;
-} {
-  const categories = loadRules();
-  if (categories.length === 0) return { violations: [], safe: true };
-
-  // Collect all prohibition rules
-  const prohibitions: string[] = [];
-
-  for (const cat of categories) {
-    if (cat.category.toLowerCase() === "never") {
-      prohibitions.push(...cat.rules);
-      continue;
-    }
-    // Also pick up rules with prohibition keywords in other categories
-    for (const rule of cat.rules) {
-      if (/\b(never|don't|do not|must not|forbidden|prohibited|refuse|decline)\b/i.test(rule)) {
-        if (!prohibitions.includes(rule)) {
-          prohibitions.push(rule);
-        }
-      }
-    }
-  }
-
-  const actionLower = action.toLowerCase();
-  const violations = prohibitions.filter((rule) => {
-    const keywords = rule
-      .toLowerCase()
-      .split(/\s+/)
-      .filter((w) => w.length > 3)
-      // Filter out common filler words
-      .filter((w) => !["that", "this", "with", "from", "about", "than", "them", "they", "their", "when", "where", "what", "which", "will", "have", "been", "would", "could", "should"].includes(w));
-    // Require at least 2 keyword matches for relevance
-    const matchCount = keywords.filter((kw) => actionLower.includes(kw)).length;
-    return matchCount >= 2;
-  });
-
-  return { violations, safe: violations.length === 0 };
+export function loadRules(): RuleCategory[] {
+  const ruleset = loadRuleset();
+  if (!ruleset) return [];
+  return parseRules(ruleset).map((c) => ({
+    category: c.name,
+    rules: c.rules,
+  }));
 }
 
 /**
- * Generate a guardrails section for the agent system prompt.
- * Injects the most critical rules so the LLM respects them.
+ * Check if a proposed action might violate any active rules.
+ *
+ * Delegates to arules-core's keyword-overlap algorithm. Returns the same
+ * shape this file used to expose so existing callers don't need changes.
+ */
+export function checkAction(action: string): CheckActionResult {
+  const ruleset = loadRuleset();
+  if (!ruleset) return { violations: [], safe: true };
+  return checkActionPure(action, ruleset);
+}
+
+/**
+ * Generate a system prompt block listing the safety-critical rules.
+ *
+ * Uses arules-core's default category set (Always, Never, Safety, Privacy).
+ * Returns empty string if no rules are loaded — callers can append the
+ * result unconditionally.
  */
 export function getGuardrailsPrompt(): string {
-  const categories = loadRules();
-  if (categories.length === 0) return "";
-
-  const lines: string[] = [];
-  lines.push("\n\n## GUARDRAILS — You MUST follow these rules:");
-
-  for (const cat of categories) {
-    // Include Always, Never, Safety, and Privacy in prompt
-    const important = ["always", "never", "safety", "privacy"];
-    if (!important.includes(cat.category.toLowerCase())) continue;
-
-    lines.push(`\n### ${cat.category}`);
-    for (const rule of cat.rules) {
-      lines.push(`- ${rule}`);
-    }
-  }
-
-  lines.push("\nViolating these rules is NOT allowed under any circumstances.");
-  return lines.join("\n");
+  const ruleset = loadRuleset();
+  if (!ruleset) return "";
+  return getGuardrailsPromptPure(ruleset);
 }
 
 /**
- * Check a tool call against guardrails before execution.
- * Returns null if safe, or an error message if blocked.
+ * Check a tool call against the ruleset BEFORE execution. Returns null if
+ * safe, or an error message string if blocked.
+ *
+ * Two layers of protection:
+ *   1. Rule-driven check via arules-core (matches against the loaded rules.md)
+ *   2. Tool-specific hardcoded guards that apply regardless of rules
+ *      (currently: blocking private IP fetches for fetch_url)
+ *
+ * Tool-specific guards live HERE rather than in arules-core because they're
+ * not rule-expressible — they're security invariants that must hold regardless
+ * of what the user puts in rules.md.
  */
-export function checkToolCall(toolName: string, input: Record<string, unknown>): string | null {
+export function checkToolCall(
+  toolName: string,
+  input: Record<string, unknown>,
+): string | null {
   // Build a description of what the tool is about to do
-  const descriptions: Record<string, (input: Record<string, unknown>) => string> = {
+  const descriptions: Record<
+    string,
+    (input: Record<string, unknown>) => string
+  > = {
     fetch_url: (i) => `Fetching URL: ${i.url}`,
     delete_task: (i) => `Deleting task: ${i.task_id}`,
     add_task: (i) => `Adding task: ${i.title}`,
@@ -168,20 +160,28 @@ export function checkToolCall(toolName: string, input: Record<string, unknown>):
   if (!describe) return null; // No special check for this tool
 
   const action = describe(input);
-  const { violations, safe } = checkAction(action);
 
-  if (!safe) {
-    console.log(`[GUARDRAILS] Tool ${toolName} blocked: ${violations.join("; ")}`);
-    return `Action blocked by guardrails: ${violations[0]}`;
+  // Layer 1: rule-driven check via arules-core
+  const ruleset = loadRuleset();
+  if (ruleset) {
+    const ruleResult = checkToolCallPure(action, ruleset);
+    if (ruleResult !== null) {
+      console.log(`[GUARDRAILS] Tool ${toolName} blocked by rule: ${ruleResult}`);
+      return ruleResult;
+    }
   }
 
-  // Special checks for specific tools
+  // Layer 2: tool-specific hardcoded guards
   if (toolName === "fetch_url") {
-    const url = (input.url as string || "").toLowerCase();
-    // Block internal/private network URLs
-    if (url.includes("localhost") || url.includes("127.0.0.1") || url.includes("0.0.0.0") ||
-        url.match(/^https?:\/\/(10\.|172\.(1[6-9]|2\d|3[01])\.|192\.168\.)/) ||
-        url.includes("metadata.google") || url.includes("169.254.")) {
+    const url = ((input.url as string) || "").toLowerCase();
+    if (
+      url.includes("localhost") ||
+      url.includes("127.0.0.1") ||
+      url.includes("0.0.0.0") ||
+      url.match(/^https?:\/\/(10\.|172\.(1[6-9]|2\d|3[01])\.|192\.168\.)/) ||
+      url.includes("metadata.google") ||
+      url.includes("169.254.")
+    ) {
       console.log(`[GUARDRAILS] Blocked internal URL fetch: ${url}`);
       return "Cannot fetch internal or private network URLs for security reasons.";
     }

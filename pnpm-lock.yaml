@@ -13,9 +13,15 @@ importers:
       '@aman-tg/shared':
         specifier: workspace:*
         version: link:../../packages/shared
+      '@aman_asmuei/aman-core':
+        specifier: link:../../../aman-core
+        version: link:../../../aman-core
       '@aman_asmuei/amem-core':
         specifier: ^0.2.0
         version: 0.2.0
+      '@aman_asmuei/arules-core':
+        specifier: link:../../../arules-core
+        version: link:../../../arules-core
       '@anthropic-ai/sdk':
         specifier: ^0.39.0
         version: 0.39.0
