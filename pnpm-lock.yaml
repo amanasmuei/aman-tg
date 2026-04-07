@@ -14,14 +14,14 @@ importers:
         specifier: workspace:*
         version: link:../../packages/shared
       '@aman_asmuei/aman-core':
-        specifier: link:../../../aman-core
-        version: link:../../../aman-core
+        specifier: ^0.2.0
+        version: 0.2.0
       '@aman_asmuei/amem-core':
         specifier: ^0.2.0
         version: 0.2.0
       '@aman_asmuei/arules-core':
-        specifier: link:../../../arules-core
-        version: link:../../../arules-core
+        specifier: ^0.1.0
+        version: 0.1.0
       '@anthropic-ai/sdk':
         specifier: ^0.39.0
         version: 0.39.0
@@ -121,8 +121,16 @@ importers:
 
 packages:
 
+  '@aman_asmuei/aman-core@0.2.0':
+    resolution: {integrity: sha512-Cmim9VZuNvbdJpTlviw8ooIGAHvTlEJh5B3MUtfU3jMWpBeqOfbfP5CHJJU+tMwC4YN7A5saS96Z1GkfDLbU+A==}
+    engines: {node: '>=18.0.0'}
+
   '@aman_asmuei/amem-core@0.2.0':
     resolution: {integrity: sha512-IuYtJaRHC/m6Uhk43cnNL8+YieP2Qe0NfTQn4eUW2fBm4Y2aQ5h+8bS/4KMHMzl3tVOgQGQ13Ux4TyCDFAuk9Q==}
+    engines: {node: '>=18.0.0'}
+
+  '@aman_asmuei/arules-core@0.1.0':
+    resolution: {integrity: sha512-QElimW9br6Qke9XP25lmgJUdPzU1ejpU3mtyQkfX1R2RzRPYAZsjzw3oYpHgUGSNCNgWtldK7d/2UdnajC1Qkg==}
     engines: {node: '>=18.0.0'}
 
   '@anthropic-ai/sdk@0.39.0':
@@ -1841,6 +1849,10 @@ packages:
 
 snapshots:
 
+  '@aman_asmuei/aman-core@0.2.0':
+    optionalDependencies:
+      better-sqlite3: 12.8.0
+
   '@aman_asmuei/amem-core@0.2.0':
     dependencies:
       better-sqlite3: 12.8.0
@@ -1848,6 +1860,11 @@ snapshots:
     optionalDependencies:
       '@huggingface/transformers': 3.8.1
       hnswlib-node: 3.0.0
+
+  '@aman_asmuei/arules-core@0.1.0':
+    dependencies:
+      '@aman_asmuei/aman-core': 0.2.0
+      better-sqlite3: 12.8.0
 
   '@anthropic-ai/sdk@0.39.0':
     dependencies:

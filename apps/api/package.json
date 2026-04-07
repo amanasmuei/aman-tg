@@ -14,8 +14,8 @@
   },
   "dependencies": {
     "@aman-tg/shared": "workspace:*",
-    "@aman_asmuei/aman-core": "link:../../../aman-core",
-    "@aman_asmuei/arules-core": "link:../../../arules-core",
+    "@aman_asmuei/aman-core": "^0.2.0",
+    "@aman_asmuei/arules-core": "^0.1.0",
     "@aman_asmuei/amem-core": "^0.2.0",
     "@anthropic-ai/sdk": "^0.39.0",
     "@hono/node-server": "^1.14.0",
