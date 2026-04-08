@@ -1,4 +1,5 @@
 import type { Agent } from "@aman-tg/shared";
+import { getAgentIcon, getAccent, Lock, Star } from "../lib/icons";
 
 interface Props {
   agent: Agent;
@@ -6,58 +7,84 @@ interface Props {
   userPlan?: string;
 }
 
+/**
+ * Pakar card — the professional service tile.
+ *
+ * Layout: icon tile (top-left), name row (with premium/lock badges),
+ * description (2 lines), and a pair of meta tags below. The whole card
+ * is the tap target; the share affordance lives in the detail page to
+ * keep the grid clean.
+ */
 export function AgentCard({ agent, onSelect, userPlan = "free" }: Props) {
   const locked = agent.premium && userPlan === "free";
-
-  const gradients: Record<string, string> = {
-    coding: "linear-gradient(135deg, rgba(88,166,255,0.1) 0%, transparent 60%)",
-    productivity: "linear-gradient(135deg, rgba(63,185,80,0.1) 0%, transparent 60%)",
-    business: "linear-gradient(135deg, rgba(210,168,255,0.1) 0%, transparent 60%)",
-    education: "linear-gradient(135deg, rgba(245,158,11,0.1) 0%, transparent 60%)",
-    personal: "linear-gradient(135deg, rgba(248,81,73,0.1) 0%, transparent 60%)",
-    lifestyle: "linear-gradient(135deg, rgba(255,123,114,0.1) 0%, transparent 60%)",
-  };
+  const Icon = getAgentIcon(agent.id);
+  const accent = getAccent(agent.category);
 
   return (
     <button
       onClick={() => onSelect(agent)}
-      className="text-left rounded-xl p-4 transition-transform active:scale-95 relative"
+      className="text-left rounded-2xl p-4 transition-transform active:scale-[0.97] relative card-soft"
       style={{
-        background: `${gradients[agent.category] || ""}, var(--tg-theme-secondary-bg-color)`,
-        opacity: locked ? 0.7 : 1,
+        background: "var(--tg-theme-secondary-bg-color)",
+        opacity: locked ? 0.72 : 1,
       }}
     >
-      <div className="text-2xl mb-2">{agent.icon}</div>
-      <div className="font-semibold text-sm mb-1 flex items-center gap-1.5">
-        {agent.name}
-        {agent.premium && <span className="text-xs">⭐</span>}
-        {locked && <span className="text-xs">🔒</span>}
+      {/* Icon tile */}
+      <div
+        className="w-11 h-11 rounded-xl flex items-center justify-center mb-3"
+        style={{ background: accent.bg }}
+      >
+        <Icon size={20} strokeWidth={2} style={{ color: accent.fg }} />
       </div>
-      <p className="text-xs leading-relaxed line-clamp-2"
-         style={{ color: "var(--tg-theme-hint-color)" }}>
+
+      {/* Name + badges */}
+      <div className="flex items-center gap-1.5 mb-1">
+        <span
+          className="font-semibold text-sm truncate"
+          style={{ color: "var(--tg-theme-text-color)" }}
+        >
+          {agent.name}
+        </span>
+        {agent.premium && (
+          <Star
+            size={12}
+            fill="#f59e0b"
+            stroke="#f59e0b"
+            className="flex-shrink-0"
+          />
+        )}
+        {locked && (
+          <Lock
+            size={12}
+            className="flex-shrink-0"
+            style={{ color: "var(--tg-theme-hint-color)" }}
+          />
+        )}
+      </div>
+
+      {/* Description */}
+      <p
+        className="text-xs leading-relaxed line-clamp-2 mb-2.5"
+        style={{ color: "var(--tg-theme-hint-color)" }}
+      >
         {locked ? "Upgrade to Pro to unlock" : agent.description}
       </p>
-      <div className="flex gap-1 mt-2 flex-wrap">
-        {!locked && agent.tags.slice(0, 2).map((tag) => (
-          <span key={tag} className="text-xs px-1.5 py-0.5 rounded"
-                style={{ background: "var(--tg-theme-bg-color)", color: "var(--tg-theme-hint-color)" }}>
-            {tag}
-          </span>
-        ))}
-      </div>
-      <div
-        className="mt-2 text-xs text-right opacity-50"
-        onClick={(e) => {
-          e.stopPropagation();
-          const link = `https://t.me/aman_agent_platform_bot?start=agent_${agent.id}`;
-          navigator.clipboard.writeText(link).then(() => {
-            const el = e.currentTarget;
-            el.textContent = "Copied!";
-            setTimeout(() => { el.textContent = "Share 🔗"; }, 1500);
-          });
-        }}
-      >
-        Share 🔗
+
+      {/* Tag row */}
+      <div className="flex gap-1 flex-wrap">
+        {!locked &&
+          agent.tags.slice(0, 2).map((tag) => (
+            <span
+              key={tag}
+              className="text-[10px] font-medium px-2 py-0.5 rounded-full"
+              style={{
+                background: "var(--tg-theme-bg-color)",
+                color: "var(--tg-theme-hint-color)",
+              }}
+            >
+              {tag}
+            </span>
+          ))}
       </div>
     </button>
   );

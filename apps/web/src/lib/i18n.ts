@@ -5,6 +5,27 @@ const strings: Record<Locale, Record<string, string>> = {
     // Header
     tagline: "Your AI companion that remembers you",
     messages: "messages",
+    greetingMorning: "Good morning",
+    greetingAfternoon: "Good afternoon",
+    greetingEvening: "Good evening",
+    greetingNight: "Good night",
+    menu: "Menu",
+    resetData: "Reset data",
+    resetConfirm: "Are you sure you want to reset all your data? This will delete all conversations, tasks, and memories. This cannot be undone.",
+
+    // Home tabs
+    kedai: "Kedai",
+    pakar: "Experts",
+    search: "Search",
+    searchKedaiPlaceholder: "Find a kedai, dish, or shop",
+    searchPakarPlaceholder: "Find an expert or skill",
+
+    // Empty / CTA
+    noMerchantsToday: "No kedai today",
+    noMerchantsHint: "New shops come online every day — check back later.",
+    tryPakar: "Try experts instead",
+    noSearchResults: "No matches",
+    noSearchHint: "Try a different keyword.",
 
     // Home
     continueConversation: "Continue a conversation",
@@ -100,6 +121,23 @@ const strings: Record<Locale, Record<string, string>> = {
   ms: {
     tagline: "Teman AI anda yang ingat pasal anda",
     messages: "mesej",
+    greetingMorning: "Selamat pagi",
+    greetingAfternoon: "Selamat tengah hari",
+    greetingEvening: "Selamat petang",
+    greetingNight: "Selamat malam",
+    menu: "Menu",
+    resetData: "Reset data",
+    resetConfirm: "Anda pasti nak reset semua data? Ini akan padam semua perbualan, task, dan memori. Tak boleh undo.",
+    kedai: "Kedai",
+    pakar: "Pakar",
+    search: "Cari",
+    searchKedaiPlaceholder: "Cari kedai, makanan, atau bisnes",
+    searchPakarPlaceholder: "Cari pakar atau kemahiran",
+    noMerchantsToday: "Belum ada kedai hari ni",
+    noMerchantsHint: "Kedai baru sentiasa ditambah — check balik nanti.",
+    tryPakar: "Cuba Pakar sementara",
+    noSearchResults: "Takde padanan",
+    noSearchHint: "Cuba kata kunci lain.",
     continueConversation: "Sambung perbualan",
     all: "Semua",
     productivity: "Produktiviti",
@@ -177,6 +215,23 @@ const strings: Record<Locale, Record<string, string>> = {
   id: {
     tagline: "Teman AI kamu yang selalu ingat",
     messages: "pesan",
+    greetingMorning: "Selamat pagi",
+    greetingAfternoon: "Selamat siang",
+    greetingEvening: "Selamat sore",
+    greetingNight: "Selamat malam",
+    menu: "Menu",
+    resetData: "Reset data",
+    resetConfirm: "Yakin mau reset semua data? Ini akan menghapus semua percakapan, task, dan memori. Tidak bisa di-undo.",
+    kedai: "Kedai",
+    pakar: "Pakar",
+    search: "Cari",
+    searchKedaiPlaceholder: "Cari kedai, makanan, atau toko",
+    searchPakarPlaceholder: "Cari pakar atau skill",
+    noMerchantsToday: "Belum ada kedai hari ini",
+    noMerchantsHint: "Toko baru datang setiap hari — cek lagi nanti.",
+    tryPakar: "Coba Pakar dulu",
+    noSearchResults: "Tidak ada hasil",
+    noSearchHint: "Coba kata kunci lain.",
     continueConversation: "Lanjutkan percakapan",
     all: "Semua",
     productivity: "Produktivitas",
@@ -277,6 +332,14 @@ export function t(key: string): string {
 /** Get current locale */
 export function getLocale(): Locale {
   return currentLocale;
+}
+
+/** Get a time-of-day greeting in the current locale (no name appended). */
+export function greetingByHour(hour: number = new Date().getHours()): string {
+  if (hour < 12) return t("greetingMorning");
+  if (hour < 15) return t("greetingAfternoon");
+  if (hour < 19) return t("greetingEvening");
+  return t("greetingNight");
 }
 
 /** Get locale label for system prompt injection */

@@ -1,5 +1,6 @@
-import { useState, useEffect } from "react";
-import { t } from "../lib/i18n";
+import { useState, useEffect, useRef } from "react";
+import { t, greetingByHour } from "../lib/i18n";
+import { MoreHorizontal, RotateCcw } from "../lib/icons";
 
 interface UsageInfo {
   messagesUsed: number;
@@ -7,12 +8,30 @@ interface UsageInfo {
   plan: string;
 }
 
+interface TelegramUser {
+  first_name?: string;
+}
+
+/**
+ * Compact app header.
+ *
+ * Row 1: brand wordmark + plan badge + overflow menu (Reset Data lives here).
+ * Row 2: personalized greeting by time of day (if we have a first name).
+ * Row 3 (conditional): free-tier usage bar, hidden for pro/team users.
+ */
 export function Header({ onReset }: { onReset?: () => void } = {}) {
   const [usage, setUsage] = useState<UsageInfo | null>(null);
+  const [firstName, setFirstName] = useState<string | null>(null);
+  const [menuOpen, setMenuOpen] = useState(false);
   const [resetting, setResetting] = useState(false);
+  const menuRef = useRef<HTMLDivElement>(null);
 
+  // Load user + usage
   useEffect(() => {
     const tg = window.Telegram?.WebApp as any;
+    const tgUser = tg?.initDataUnsafe?.user as TelegramUser | undefined;
+    if (tgUser?.first_name) setFirstName(tgUser.first_name);
+
     const telegramId = tg?.initDataUnsafe?.user?.id;
     if (!telegramId) return;
 
@@ -33,82 +52,150 @@ export function Header({ onReset }: { onReset?: () => void } = {}) {
     return () => controller.abort();
   }, []);
 
-  const isLow = usage && usage.plan === "free" && usage.messagesLimit > 0 && usage.messagesUsed >= usage.messagesLimit - 5;
+  // Close menu on outside tap
+  useEffect(() => {
+    if (!menuOpen) return;
+    const onClick = (e: Event) => {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
+        setMenuOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", onClick);
+    document.addEventListener("touchstart", onClick);
+    return () => {
+      document.removeEventListener("mousedown", onClick);
+      document.removeEventListener("touchstart", onClick);
+    };
+  }, [menuOpen]);
+
+  const isLow =
+    usage &&
+    usage.plan === "free" &&
+    usage.messagesLimit > 0 &&
+    usage.messagesUsed >= usage.messagesLimit - 5;
 
   const handleReset = () => {
+    setMenuOpen(false);
     const tg = window.Telegram?.WebApp as any;
     const telegramId = tg?.initDataUnsafe?.user?.id;
     if (!telegramId) return;
 
-    tg.showConfirm(
-      "Are you sure you want to reset all your data? This will delete all conversations, tasks, and memories. This cannot be undone.",
-      async (confirmed: boolean) => {
-        if (!confirmed) return;
-
-        setResetting(true);
-        try {
-          const res = await fetch("/api/users/me/data", {
-            method: "DELETE",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ telegramId }),
-          });
-          if (res.ok) {
-            const data = await res.json();
-            tg.showAlert(
-              `Data cleared: ${data.cleared.conversations} conversations, ${data.cleared.messages} messages, ${data.cleared.todos} tasks, ${data.cleared.memories} memories.`,
-              () => {
-                onReset?.();
-                window.location.reload();
-              }
-            );
-          }
-        } catch {
-          tg.showAlert("Failed to reset data. Please try again.");
-        } finally {
-          setResetting(false);
+    tg.showConfirm(t("resetConfirm"), async (confirmed: boolean) => {
+      if (!confirmed) return;
+      setResetting(true);
+      try {
+        const res = await fetch("/api/users/me/data", {
+          method: "DELETE",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ telegramId }),
+        });
+        if (res.ok) {
+          const data = await res.json();
+          tg.showAlert(
+            `Data cleared: ${data.cleared.conversations} conversations, ${data.cleared.messages} messages, ${data.cleared.todos} tasks, ${data.cleared.memories} memories.`,
+            () => {
+              onReset?.();
+              window.location.reload();
+            }
+          );
         }
+      } catch {
+        tg.showAlert("Failed to reset data. Please try again.");
+      } finally {
+        setResetting(false);
       }
-    );
+    });
   };
+
+  const greetingLine = firstName
+    ? `${greetingByHour()}, ${firstName} 👋`
+    : t("tagline");
 
   return (
     <div
-      className="pb-4"
       style={{
-        paddingTop: "calc(env(safe-area-inset-top, 0px) + var(--tg-safe-top, 0px) + 16px)",
+        paddingTop: "calc(env(safe-area-inset-top, 0px) + var(--tg-safe-top, 0px) + 14px)",
         paddingRight: "calc(env(safe-area-inset-right, 0px) + var(--tg-safe-right, 0px) + 16px)",
         paddingLeft: "calc(env(safe-area-inset-left, 0px) + var(--tg-safe-left, 0px) + 16px)",
+        paddingBottom: 12,
       }}
     >
-      <div className="flex items-center gap-3 mb-1">
-        <div className="text-2xl font-bold tracking-tight">aman</div>
+      {/* Row 1: brand + plan + menu */}
+      <div className="flex items-center gap-2 mb-1">
+        <div className="text-2xl font-bold tracking-tight leading-none">aman</div>
         {usage?.plan === "pro" ? (
-          <div className="px-2 py-0.5 rounded-full text-xs font-medium"
-               style={{ background: "#f59e0b", color: "#000" }}>
+          <div
+            className="px-2 py-0.5 rounded-full text-[10px] font-semibold tracking-wide"
+            style={{ background: "#f59e0b", color: "#000" }}
+          >
             PRO
           </div>
         ) : (
-          <div className="px-2 py-0.5 rounded-full text-xs font-medium"
-               style={{ background: "var(--tg-theme-button-color)", color: "var(--tg-theme-button-text-color)" }}>
-            beta
+          <div
+            className="px-2 py-0.5 rounded-full text-[10px] font-semibold tracking-wide"
+            style={{
+              background: "var(--tg-theme-secondary-bg-color)",
+              color: "var(--tg-theme-hint-color)",
+            }}
+          >
+            FREE
           </div>
         )}
-        <button
-          onClick={handleReset}
-          disabled={resetting}
-          className="ml-auto text-xs px-2 py-1 rounded-lg transition-opacity disabled:opacity-30"
-          style={{ background: "var(--tg-theme-secondary-bg-color)", color: "var(--tg-theme-hint-color)" }}
-        >
-          {resetting ? "..." : "Reset Data"}
-        </button>
+
+        {/* Spacer */}
+        <div className="flex-1" />
+
+        {/* Overflow menu */}
+        <div ref={menuRef} className="relative">
+          <button
+            onClick={() => setMenuOpen((o) => !o)}
+            className="w-9 h-9 rounded-full flex items-center justify-center transition-opacity active:opacity-60"
+            style={{ background: "var(--tg-theme-secondary-bg-color)" }}
+            aria-label={t("menu")}
+            disabled={resetting}
+          >
+            <MoreHorizontal
+              size={18}
+              style={{ color: "var(--tg-theme-hint-color)" }}
+            />
+          </button>
+          {menuOpen && (
+            <div
+              className="absolute right-0 mt-2 min-w-[160px] rounded-xl overflow-hidden shadow-xl z-50 fade-in"
+              style={{
+                background: "var(--tg-theme-secondary-bg-color)",
+                border: "1px solid var(--tg-theme-hint-color)",
+                borderColor: "rgba(255,255,255,0.08)",
+              }}
+            >
+              <button
+                onClick={handleReset}
+                className="w-full text-left px-4 py-3 text-sm flex items-center gap-3 transition-colors hover:opacity-80"
+                style={{ color: "#f85149" }}
+              >
+                <RotateCcw size={16} />
+                <span>{t("resetData")}</span>
+              </button>
+            </div>
+          )}
+        </div>
       </div>
-      <p className="text-sm" style={{ color: "var(--tg-theme-hint-color)" }}>
-        {t("tagline")}
+
+      {/* Row 2: greeting */}
+      <p
+        className="text-sm leading-snug"
+        style={{ color: "var(--tg-theme-hint-color)" }}
+      >
+        {greetingLine}
       </p>
+
+      {/* Row 3: usage bar (free tier only) */}
       {usage && usage.plan === "free" && usage.messagesLimit > 0 && (
-        <div className="mt-2 flex items-center gap-2">
-          <div className="flex-1 h-1.5 rounded-full overflow-hidden"
-               style={{ background: "var(--tg-theme-secondary-bg-color)" }}>
+        <div className="mt-3 flex items-center gap-2">
+          <div
+            className="flex-1 h-1.5 rounded-full overflow-hidden"
+            style={{ background: "var(--tg-theme-secondary-bg-color)" }}
+          >
             <div
               className="h-full rounded-full transition-all"
               style={{
@@ -117,7 +204,10 @@ export function Header({ onReset }: { onReset?: () => void } = {}) {
               }}
             />
           </div>
-          <span className="text-xs flex-shrink-0" style={{ color: isLow ? "#ef4444" : "var(--tg-theme-hint-color)" }}>
+          <span
+            className="text-[11px] flex-shrink-0 font-medium"
+            style={{ color: isLow ? "#ef4444" : "var(--tg-theme-hint-color)" }}
+          >
             {usage.messagesUsed}/{usage.messagesLimit} {t("messages")}
           </span>
         </div>

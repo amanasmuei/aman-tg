@@ -29,6 +29,34 @@ body {
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb { background: var(--tg-theme-hint-color); border-radius: 2px; }
 
+/* Hide scrollbar for horizontal filter chip rows */
+.no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+.no-scrollbar::-webkit-scrollbar { display: none; }
+
+/* Utility: soft card shadow */
+.card-soft {
+  box-shadow:
+    0 1px 2px rgba(0, 0, 0, 0.25),
+    0 0 0 1px rgba(255, 255, 255, 0.04);
+}
+
+/* Utility: generic fade-in (used by menu dropdown, empty states, floating chip) */
+.fade-in {
+  animation: fadeIn 0.18s ease-out;
+}
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* line-clamp utilities (Tailwind v4 ships them but keep as fallback) */
+.line-clamp-2 {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
 /* Typing indicator */
 .typing-dots span {
   animation: typingBounce 1.4s infinite ease-in-out;
