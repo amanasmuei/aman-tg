@@ -21,6 +21,7 @@ app.get("/me", (c) => {
     username: user.username,
     selectedAgentId: user.selected_agent_id,
     plan: user.plan,
+    planExpiresAt: user.plan_expires_at, // null = permanent plan, number = Unix ms
     messagesUsed,
     messagesLimit: user.plan === "free" ? 30 : -1,
     createdAt: user.created_at,

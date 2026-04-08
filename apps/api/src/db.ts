@@ -410,7 +410,8 @@ export function getMessages(conversationId: string, limit = 20): DbMessage[] {
 
 // ── Referrals ───────────────────────────────────────
 
-const REFERRAL_REWARD_DAYS = 3;
+export const REFERRAL_REWARD_DAYS = 3;
+const REFERRAL_REWARD_MS = REFERRAL_REWARD_DAYS * 24 * 60 * 60 * 1000;
 
 export interface DbReferral {
   id: string;
@@ -421,7 +422,50 @@ export interface DbReferral {
 }
 
 /**
+ * Pure helper: compute the referral reward for a user.
+ *
+ * Given a user's current plan state, returns the new plan + expiry they
+ * should be upgraded to as a referral reward, or null if they gain nothing.
+ *
+ * Reward rules:
+ *   - free             → pro for REFERRAL_REWARD_DAYS days from now
+ *   - pro (expiring)   → extend expiry by REFERRAL_REWARD_DAYS days. Baseline
+ *                        is max(current_expiry, now) so a lapsed expiry
+ *                        doesn't accidentally credit into the past.
+ *   - pro (permanent,  → null. Already have pro forever; nothing to extend.
+ *     plan_expires_at === null)
+ *   - team             → null. Separate business logic.
+ *   - anything else    → null.
+ *
+ * This is a pure function — no db access, no side effects — so it can be
+ * unit-tested without spinning up a database. processReferral() below is
+ * the thin wrapper that applies the result.
+ */
+export function computeReferralReward(
+  user: Pick<DbUser, "plan" | "plan_expires_at">,
+  now: number = Date.now(),
+): { plan: string; plan_expires_at: number } | null {
+  if (user.plan === "free") {
+    return { plan: "pro", plan_expires_at: now + REFERRAL_REWARD_MS };
+  }
+
+  if (user.plan === "pro" && user.plan_expires_at !== null) {
+    const baseline = Math.max(user.plan_expires_at, now);
+    return { plan: "pro", plan_expires_at: baseline + REFERRAL_REWARD_MS };
+  }
+
+  // Permanent pro, team, or any unknown plan → no reward
+  return null;
+}
+
+/**
  * Process a referral. Returns null if already referred or self-referral.
+ *
+ * As of 2026-04-08, both referrer and referred can get rewards:
+ *   - New (free) signups become pro for 3 days
+ *   - Existing expiring-pro referrers get a 3-day extension stacked on
+ *     top of their current expiry
+ *   - Permanent-pro and team users get no change (they already have pro)
  */
 export function processReferral(
   referrerId: number,
@@ -444,24 +488,35 @@ export function processReferral(
   if (!referrer || !referred) return null;
 
   const now = Date.now();
-  const proExpiry = now + REFERRAL_REWARD_DAYS * 24 * 60 * 60 * 1000;
 
-  // Save referral
+  // Save referral record
   db.prepare(
     "INSERT INTO referrals (id, referrer_id, referred_id, reward_days, created_at) VALUES (?, ?, ?, ?, ?)",
   ).run(randomUUID(), referrerId, referredId, REFERRAL_REWARD_DAYS, now);
 
-  // Upgrade both to pro (if they're on free) WITH the expiry actually persisted.
-  // Previously proExpiry was computed but never written — the reward was permanent.
-  if (referrer.plan === "free") {
-    db.prepare(
-      "UPDATE users SET plan = 'pro', plan_expires_at = ?, updated_at = ? WHERE telegram_id = ?",
-    ).run(proExpiry, now, referrerId);
+  // Apply computed rewards to both sides (null means no change)
+  const update = db.prepare(
+    "UPDATE users SET plan = ?, plan_expires_at = ?, updated_at = ? WHERE telegram_id = ?",
+  );
+
+  const referrerReward = computeReferralReward(referrer, now);
+  if (referrerReward) {
+    update.run(
+      referrerReward.plan,
+      referrerReward.plan_expires_at,
+      now,
+      referrerId,
+    );
   }
-  if (referred.plan === "free") {
-    db.prepare(
-      "UPDATE users SET plan = 'pro', plan_expires_at = ?, updated_at = ? WHERE telegram_id = ?",
-    ).run(proExpiry, now, referredId);
+
+  const referredReward = computeReferralReward(referred, now);
+  if (referredReward) {
+    update.run(
+      referredReward.plan,
+      referredReward.plan_expires_at,
+      now,
+      referredId,
+    );
   }
 
   return {

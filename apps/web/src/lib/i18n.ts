@@ -116,6 +116,8 @@ const strings: Record<Locale, Record<string, string>> = {
     builtBy: "Built by",
     inviteFriends: "Invite Friends",
     inviteReward: "Both get 3 days Pro free",
+    inviteExtendPro: "Extend your Pro",
+    inviteExtendProReward: "Invite a friend — get 3 extra days",
   },
 
   ms: {
@@ -210,6 +212,8 @@ const strings: Record<Locale, Record<string, string>> = {
     builtBy: "Dibina oleh",
     inviteFriends: "Jemput Kawan",
     inviteReward: "Dapat 3 hari Pro percuma",
+    inviteExtendPro: "Sambung Pro anda",
+    inviteExtendProReward: "Jemput kawan — dapat 3 hari tambahan",
   },
 
   id: {
@@ -304,6 +308,8 @@ const strings: Record<Locale, Record<string, string>> = {
     builtBy: "Dibuat oleh",
     inviteFriends: "Ajak Teman",
     inviteReward: "Dapat 3 hari Pro gratis",
+    inviteExtendPro: "Perpanjang Pro kamu",
+    inviteExtendProReward: "Ajak teman — dapat 3 hari tambahan",
   },
 };
 

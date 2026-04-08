@@ -34,6 +34,7 @@ export function App() {
     name: string;
   } | null>(null);
   const [userPlan, setUserPlan] = useState("free");
+  const [planExpiresAt, setPlanExpiresAt] = useState<number | null>(null);
   const [showOnboarding, setShowOnboarding] = useState(false);
   const [hasConversations, setHasConversations] = useState(false);
   const [inviteCopied, setInviteCopied] = useState(false);
@@ -43,12 +44,18 @@ export function App() {
     const telegramId = tg?.initDataUnsafe?.user?.id;
     if (!telegramId) return;
 
-    // Load user — decides onboarding + plan
+    // Load user — decides onboarding + plan + expiry
     fetch(`/api/users/me?telegramId=${telegramId}`)
       .then((res) => res.json())
       .then((data) => {
-        if (data.plan) setUserPlan(data.plan);
-        else setShowOnboarding(true);
+        if (data.plan) {
+          setUserPlan(data.plan);
+          setPlanExpiresAt(
+            typeof data.planExpiresAt === "number" ? data.planExpiresAt : null,
+          );
+        } else {
+          setShowOnboarding(true);
+        }
       })
       .catch(() => {
         setShowOnboarding(true);
@@ -210,54 +217,71 @@ export function App() {
           </div>
 
           {/*
-           * Invite banner — ONLY shown to free users.
+           * Invite banner — shown to users who can actually benefit.
            *
-           * The reward ("Both get 3 days Pro free") is only claimable when
-           * referrer.plan === "free" in apps/api/src/db.ts:processReferral.
-           * Showing it to pro/team users would dangle a benefit they can't
-           * actually get — see the discussion around commit c3c5a80.
-           * When/if the backend is updated to extend existing pro plans on
-           * referral, this guard can be relaxed to also show for expiring
-           * (but not permanent) pro users.
+           * Visibility matrix (matches apps/api computeReferralReward):
+           *   - free               → shown with "Both get 3 days Pro free"
+           *   - expiring pro       → shown with "Extend your Pro" copy
+           *   - permanent pro      → hidden (nothing to extend)
+           *   - team               → hidden (separate business logic)
            */}
-          {userPlan === "free" && (
-            <div className="px-4 mb-3">
-              <button
-                onClick={handleInvite}
-                className="w-full rounded-2xl px-4 py-2.5 flex items-center gap-3 transition-transform active:scale-[0.98]"
-                style={{
-                  background:
-                    "linear-gradient(135deg, rgba(245,158,11,0.18) 0%, rgba(245,158,11,0.04) 70%), var(--tg-theme-secondary-bg-color)",
-                  border: "1px solid rgba(245,158,11,0.25)",
-                }}
-              >
-                <div
-                  className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0"
-                  style={{ background: "rgba(245,158,11,0.22)" }}
+          {(() => {
+            const isFree = userPlan === "free";
+            const isExpiringPro = userPlan === "pro" && planExpiresAt !== null;
+            if (!isFree && !isExpiringPro) return null;
+
+            const title = inviteCopied
+              ? t("copied")
+              : isFree
+                ? t("inviteFriends")
+                : t("inviteExtendPro");
+            const subtitle = isFree
+              ? t("inviteReward")
+              : t("inviteExtendProReward");
+
+            return (
+              <div className="px-4 mb-3">
+                <button
+                  onClick={handleInvite}
+                  className="w-full rounded-2xl px-4 py-2.5 flex items-center gap-3 transition-transform active:scale-[0.98]"
+                  style={{
+                    background:
+                      "linear-gradient(135deg, rgba(245,158,11,0.18) 0%, rgba(245,158,11,0.04) 70%), var(--tg-theme-secondary-bg-color)",
+                    border: "1px solid rgba(245,158,11,0.25)",
+                  }}
                 >
-                  <Gift size={16} strokeWidth={2.2} style={{ color: "#f59e0b" }} />
-                </div>
-                <div className="flex-1 min-w-0 text-left">
                   <div
-                    className="text-xs font-semibold leading-tight"
-                    style={{ color: "var(--tg-theme-text-color)" }}
+                    className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0"
+                    style={{ background: "rgba(245,158,11,0.22)" }}
                   >
-                    {inviteCopied ? t("copied") : t("inviteFriends")}
+                    <Gift
+                      size={16}
+                      strokeWidth={2.2}
+                      style={{ color: "#f59e0b" }}
+                    />
                   </div>
-                  <div
-                    className="text-[11px] leading-tight mt-0.5"
+                  <div className="flex-1 min-w-0 text-left">
+                    <div
+                      className="text-xs font-semibold leading-tight"
+                      style={{ color: "var(--tg-theme-text-color)" }}
+                    >
+                      {title}
+                    </div>
+                    <div
+                      className="text-[11px] leading-tight mt-0.5"
+                      style={{ color: "var(--tg-theme-hint-color)" }}
+                    >
+                      {subtitle}
+                    </div>
+                  </div>
+                  <ChevronRight
+                    size={16}
                     style={{ color: "var(--tg-theme-hint-color)" }}
-                  >
-                    {t("inviteReward")}
-                  </div>
-                </div>
-                <ChevronRight
-                  size={16}
-                  style={{ color: "var(--tg-theme-hint-color)" }}
-                />
-              </button>
-            </div>
-          )}
+                  />
+                </button>
+              </div>
+            );
+          })()}
 
           {/* Content */}
           {homeTab === "kedai" ? (
