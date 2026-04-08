@@ -26,6 +26,7 @@ export function getDb(): Database.Database {
       language_code TEXT,
       selected_agent_id TEXT NOT NULL DEFAULT 'coding',
       plan TEXT NOT NULL DEFAULT 'free',
+      plan_expires_at INTEGER,
       messages_today INTEGER NOT NULL DEFAULT 0,
       messages_date TEXT NOT NULL DEFAULT '',
       created_at INTEGER NOT NULL,
@@ -142,6 +143,14 @@ export function getDb(): Database.Database {
     CREATE INDEX IF NOT EXISTS idx_orders_created ON orders(created_at);
   `);
 
+  // ── Migrations ───────────────────────────────────
+  // Additive ALTER statements for existing databases. CREATE TABLE IF NOT EXISTS
+  // above handles fresh installs; this block brings older DBs up to the current schema.
+  const userCols = _db.prepare("PRAGMA table_info(users)").all() as { name: string }[];
+  if (!userCols.some((c) => c.name === "plan_expires_at")) {
+    _db.exec("ALTER TABLE users ADD COLUMN plan_expires_at INTEGER");
+  }
+
   return _db;
 }
 
@@ -155,10 +164,30 @@ export interface DbUser {
   language_code: string | null;
   selected_agent_id: string;
   plan: string;
+  /**
+   * When the user's paid plan expires (Unix ms).
+   * - null  = permanent plan (admin grant, or free user — see `plan` field)
+   * - > now = plan is active
+   * - < now = plan has expired; will be lazily downgraded to 'free' on next usage check
+   */
+  plan_expires_at: number | null;
   messages_today: number;
   messages_date: string;
   created_at: number;
   updated_at: number;
+}
+
+/**
+ * Pure helper: is this user currently on an active paid plan?
+ * - free  → always false
+ * - pro/team with null expiry → true (permanent)
+ * - pro/team with future expiry → true
+ * - pro/team with past expiry → false (lazy downgrade handled by checkAndIncrementUsage)
+ */
+export function isPlanActive(user: Pick<DbUser, "plan" | "plan_expires_at">, now: number = Date.now()): boolean {
+  if (user.plan !== "pro" && user.plan !== "team") return false;
+  if (user.plan_expires_at === null) return true;
+  return user.plan_expires_at > now;
 }
 
 export function upsertUser(
@@ -196,10 +225,26 @@ export function updateSelectedAgent(telegramId: number, agentId: string): void {
     .run(agentId, Date.now(), telegramId);
 }
 
-export function updateUserPlan(telegramId: number, plan: string): void {
+/**
+ * Update a user's plan.
+ *
+ * @param expiresAt  When the plan expires (Unix ms), or null for permanent.
+ *                   Omit the argument entirely to leave the existing expiry unchanged.
+ */
+export function updateUserPlan(
+  telegramId: number,
+  plan: string,
+  expiresAt?: number | null,
+): void {
   const db = getDb();
-  db.prepare("UPDATE users SET plan = ?, updated_at = ? WHERE telegram_id = ?")
-    .run(plan, Date.now(), telegramId);
+  if (expiresAt === undefined) {
+    // Legacy path: just change the plan, keep whatever expiry is set
+    db.prepare("UPDATE users SET plan = ?, updated_at = ? WHERE telegram_id = ?")
+      .run(plan, Date.now(), telegramId);
+  } else {
+    db.prepare("UPDATE users SET plan = ?, plan_expires_at = ?, updated_at = ? WHERE telegram_id = ?")
+      .run(plan, expiresAt, Date.now(), telegramId);
+  }
 }
 
 // ── Usage Limits ────────────────────────────────────
@@ -210,10 +255,20 @@ export function checkAndIncrementUsage(
   telegramId: number,
 ): { allowed: boolean; used: number; limit: number; plan: string } {
   const db = getDb();
-  const user = getUser(telegramId);
+  let user = getUser(telegramId);
   if (!user) return { allowed: false, used: 0, limit: 0, plan: "free" };
 
-  if (user.plan === "pro" || user.plan === "team") {
+  // Lazy expiry: if the user is on a paid plan but their expiry has passed,
+  // downgrade them to free in-place and fall through to the free-tier logic.
+  // This is the self-healing mechanism — no cron needed for small user bases.
+  if ((user.plan === "pro" || user.plan === "team") && !isPlanActive(user)) {
+    db.prepare(
+      "UPDATE users SET plan = 'free', plan_expires_at = NULL, updated_at = ? WHERE telegram_id = ?",
+    ).run(Date.now(), telegramId);
+    user = { ...user, plan: "free", plan_expires_at: null };
+  }
+
+  if (isPlanActive(user)) {
     return { allowed: true, used: user.messages_today, limit: -1, plan: user.plan };
   }
 
@@ -396,14 +451,17 @@ export function processReferral(
     "INSERT INTO referrals (id, referrer_id, referred_id, reward_days, created_at) VALUES (?, ?, ?, ?, ?)",
   ).run(randomUUID(), referrerId, referredId, REFERRAL_REWARD_DAYS, now);
 
-  // Upgrade both to pro (if they're on free)
+  // Upgrade both to pro (if they're on free) WITH the expiry actually persisted.
+  // Previously proExpiry was computed but never written — the reward was permanent.
   if (referrer.plan === "free") {
-    db.prepare("UPDATE users SET plan = 'pro', updated_at = ? WHERE telegram_id = ?")
-      .run(now, referrerId);
+    db.prepare(
+      "UPDATE users SET plan = 'pro', plan_expires_at = ?, updated_at = ? WHERE telegram_id = ?",
+    ).run(proExpiry, now, referrerId);
   }
   if (referred.plan === "free") {
-    db.prepare("UPDATE users SET plan = 'pro', updated_at = ? WHERE telegram_id = ?")
-      .run(now, referredId);
+    db.prepare(
+      "UPDATE users SET plan = 'pro', plan_expires_at = ?, updated_at = ? WHERE telegram_id = ?",
+    ).run(proExpiry, now, referredId);
   }
 
   return {
