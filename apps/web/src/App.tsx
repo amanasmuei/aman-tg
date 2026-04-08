@@ -209,43 +209,55 @@ export function App() {
             </div>
           </div>
 
-          {/* Invite banner (slim, gradient, dismissable-ish via copy feedback) */}
-          <div className="px-4 mb-3">
-            <button
-              onClick={handleInvite}
-              className="w-full rounded-2xl px-4 py-2.5 flex items-center gap-3 transition-transform active:scale-[0.98]"
-              style={{
-                background:
-                  "linear-gradient(135deg, rgba(245,158,11,0.18) 0%, rgba(245,158,11,0.04) 70%), var(--tg-theme-secondary-bg-color)",
-                border: "1px solid rgba(245,158,11,0.25)",
-              }}
-            >
-              <div
-                className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0"
-                style={{ background: "rgba(245,158,11,0.22)" }}
+          {/*
+           * Invite banner — ONLY shown to free users.
+           *
+           * The reward ("Both get 3 days Pro free") is only claimable when
+           * referrer.plan === "free" in apps/api/src/db.ts:processReferral.
+           * Showing it to pro/team users would dangle a benefit they can't
+           * actually get — see the discussion around commit c3c5a80.
+           * When/if the backend is updated to extend existing pro plans on
+           * referral, this guard can be relaxed to also show for expiring
+           * (but not permanent) pro users.
+           */}
+          {userPlan === "free" && (
+            <div className="px-4 mb-3">
+              <button
+                onClick={handleInvite}
+                className="w-full rounded-2xl px-4 py-2.5 flex items-center gap-3 transition-transform active:scale-[0.98]"
+                style={{
+                  background:
+                    "linear-gradient(135deg, rgba(245,158,11,0.18) 0%, rgba(245,158,11,0.04) 70%), var(--tg-theme-secondary-bg-color)",
+                  border: "1px solid rgba(245,158,11,0.25)",
+                }}
               >
-                <Gift size={16} strokeWidth={2.2} style={{ color: "#f59e0b" }} />
-              </div>
-              <div className="flex-1 min-w-0 text-left">
                 <div
-                  className="text-xs font-semibold leading-tight"
-                  style={{ color: "var(--tg-theme-text-color)" }}
+                  className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0"
+                  style={{ background: "rgba(245,158,11,0.22)" }}
                 >
-                  {inviteCopied ? t("copied") : t("inviteFriends")}
+                  <Gift size={16} strokeWidth={2.2} style={{ color: "#f59e0b" }} />
                 </div>
-                <div
-                  className="text-[11px] leading-tight mt-0.5"
+                <div className="flex-1 min-w-0 text-left">
+                  <div
+                    className="text-xs font-semibold leading-tight"
+                    style={{ color: "var(--tg-theme-text-color)" }}
+                  >
+                    {inviteCopied ? t("copied") : t("inviteFriends")}
+                  </div>
+                  <div
+                    className="text-[11px] leading-tight mt-0.5"
+                    style={{ color: "var(--tg-theme-hint-color)" }}
+                  >
+                    {t("inviteReward")}
+                  </div>
+                </div>
+                <ChevronRight
+                  size={16}
                   style={{ color: "var(--tg-theme-hint-color)" }}
-                >
-                  {t("inviteReward")}
-                </div>
-              </div>
-              <ChevronRight
-                size={16}
-                style={{ color: "var(--tg-theme-hint-color)" }}
-              />
-            </button>
-          </div>
+                />
+              </button>
+            </div>
+          )}
 
           {/* Content */}
           {homeTab === "kedai" ? (
