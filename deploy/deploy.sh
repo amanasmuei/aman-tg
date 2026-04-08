@@ -3,16 +3,38 @@
 # Usage: bash deploy/deploy.sh
 #
 # What it does:
-#   1. Pull latest code
-#   2. Install deps + build
-#   3. Apply k3s manifests (if changed)
-#   4. Rolling restart API + Bot pods (zero downtime)
+#   1. Back up the sqlite databases (keep last BACKUPS_TO_KEEP)
+#   2. Pull latest code
+#   3. Install deps + build
+#   4. Apply k3s manifests (if changed)
+#   5. Rolling restart API + Bot pods (zero downtime)
 
 set -euo pipefail
 
 APP_DIR="/var/www/aman-tg"
+DATA_DIR="$APP_DIR/data"
+BACKUP_DIR="$DATA_DIR/backups"
 NAMESPACE="aman"
+BACKUPS_TO_KEEP=3
 cd "$APP_DIR"
+
+# ── Pre-deploy backup ───────────────────────────────
+# Copies the live sqlite files to a timestamped directory and rotates to keep
+# only the last N. Cheap insurance against a bad migration or corrupted deploy.
+echo "==> Backing up databases..."
+TS=$(date +%Y%m%d-%H%M%S)
+mkdir -p "$BACKUP_DIR"
+BACKUP_TARGET="$BACKUP_DIR/$TS"
+mkdir -p "$BACKUP_TARGET"
+for db in aman.db amem.db; do
+  if [ -f "$DATA_DIR/$db" ]; then
+    cp "$DATA_DIR/$db" "$BACKUP_TARGET/$db"
+    echo "  backed up $db"
+  fi
+done
+# Rotate: keep newest $BACKUPS_TO_KEEP, delete the rest
+ls -1dt "$BACKUP_DIR"/*/ 2>/dev/null | tail -n +$((BACKUPS_TO_KEEP + 1)) | xargs -r rm -rf
+echo "  retained: $(ls -1 "$BACKUP_DIR" | wc -l) backup(s)"
 
 echo "==> Pulling latest code..."
 git pull
