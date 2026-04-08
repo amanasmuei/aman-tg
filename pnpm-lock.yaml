@@ -17,8 +17,8 @@ importers:
         specifier: ^0.2.0
         version: 0.2.0
       '@aman_asmuei/amem-core':
-        specifier: ^0.4.2
-        version: 0.4.2
+        specifier: ^0.5.0
+        version: 0.5.0
       '@aman_asmuei/arules-core':
         specifier: ^0.1.0
         version: 0.1.0
@@ -125,8 +125,8 @@ packages:
     resolution: {integrity: sha512-Cmim9VZuNvbdJpTlviw8ooIGAHvTlEJh5B3MUtfU3jMWpBeqOfbfP5CHJJU+tMwC4YN7A5saS96Z1GkfDLbU+A==}
     engines: {node: '>=18.0.0'}
 
-  '@aman_asmuei/amem-core@0.4.2':
-    resolution: {integrity: sha512-9BEocnkd47zAqYVF4S6Pbrx4Kf/g5XGSdnZ2NeE/pYj5mncd79MOgwQVnOIr9KXOsPWm48IwETaq65QJdK7umw==}
+  '@aman_asmuei/amem-core@0.5.0':
+    resolution: {integrity: sha512-SBxctehOFuHxYx5/r5d7C7WapyfsARbxVQcBe2zCBFAOqfpCjptsaXDuNZTD5Wo62IT+20keMhCScEujGqdwbg==}
     engines: {node: '>=18.0.0'}
 
   '@aman_asmuei/arules-core@0.1.0':
@@ -1853,7 +1853,7 @@ snapshots:
     optionalDependencies:
       better-sqlite3: 12.8.0
 
-  '@aman_asmuei/amem-core@0.4.2':
+  '@aman_asmuei/amem-core@0.5.0':
     dependencies:
       '@huggingface/transformers': 3.8.1
       better-sqlite3: 12.8.0
