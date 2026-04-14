@@ -80,9 +80,12 @@ if (fs.existsSync(webDistPath)) {
       });
     }
     // SPA fallback — serve index.html
+    // no-cache so Telegram/WebKit always revalidates and picks up new bundle
+    // hashes on deploy; hashed assets under /assets/* remain long-cacheable.
     const indexPath = path.join(webDistPath, "index.html");
     return c.body(fs.readFileSync(indexPath), 200, {
       "Content-Type": "text/html; charset=utf-8",
+      "Cache-Control": "no-cache, no-store, must-revalidate",
     });
   });
   console.log(`[STATIC] Serving web frontend from ${webDistPath}`);

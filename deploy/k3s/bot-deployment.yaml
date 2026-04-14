@@ -29,7 +29,7 @@ spec:
         - name: NODE_ENV
           value: production
         - name: MINI_APP_URL
-          value: https://aman.kooleklabs.com
+          value: https://aman.kooleklabs.com/?v=20260414
         - name: API_URL
           value: http://aman-api-svc:3000
         resources:
