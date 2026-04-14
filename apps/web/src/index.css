@@ -97,3 +97,187 @@ body {
   from { opacity: 0; transform: translateY(20px); }
   to { opacity: 1; transform: translateY(0); }
 }
+
+/* =========================================================
+ * Landing — warm editorial aesthetic
+ * Scoped to .landing so it never leaks into the Mini App UI.
+ * ========================================================= */
+.landing {
+  --paper: #f4efe4;
+  --paper-deep: #ebe4d3;
+  --ink: #1b1a17;
+  --ink-soft: #3a362e;
+  --ink-hint: #7a7467;
+  --forest: #2f4a3a;
+  --forest-deep: #1f3226;
+  --terracotta: #b85c38;
+  --sun: #c89b3c;
+  --rule: rgba(27, 26, 23, 0.12);
+  --card: #fbf7ec;
+
+  background: var(--paper);
+  color: var(--ink);
+  font-family: "Geist", ui-sans-serif, system-ui, sans-serif;
+  font-feature-settings: "ss01", "ss02";
+  -webkit-font-smoothing: antialiased;
+  letter-spacing: -0.005em;
+  min-height: 100vh;
+  position: relative;
+  overflow-x: hidden;
+}
+.landing * { box-sizing: border-box; }
+
+/* Paper grain overlay — faint, warm */
+.landing::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 1;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='240' height='240'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0.1 0 0 0 0 0.1 0 0 0 0 0.08 0 0 0 0.35 0'/></filter><rect width='100%25' height='100%25' filter='url(%23n)' opacity='0.55'/></svg>");
+  mix-blend-mode: multiply;
+  opacity: 0.4;
+}
+
+/* Cursor halo — set --mx/--my from JS */
+.landing .halo {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: radial-gradient(
+    420px circle at var(--mx, 50%) var(--my, 30%),
+    rgba(200, 155, 60, 0.22),
+    rgba(200, 155, 60, 0) 60%
+  );
+  transition: background 200ms linear;
+  z-index: 0;
+}
+
+.landing .display { font-family: "Fraunces", ui-serif, Georgia, serif; letter-spacing: -0.02em; }
+.landing .display-soft { font-variation-settings: "opsz" 144, "SOFT" 100, "wght" 380; }
+.landing .mono { font-family: "JetBrains Mono", ui-monospace, monospace; }
+
+/* Reveal on scroll — initial hidden state, .is-in transitions to visible */
+.landing .reveal {
+  opacity: 0;
+  transform: translateY(18px);
+  transition: opacity 900ms cubic-bezier(0.22, 1, 0.36, 1),
+              transform 900ms cubic-bezier(0.22, 1, 0.36, 1);
+  transition-delay: var(--reveal-delay, 0ms);
+}
+.landing .reveal.is-in { opacity: 1; transform: none; }
+
+/* Caret for typing effect */
+.landing .caret {
+  display: inline-block;
+  width: 2px;
+  height: 1.05em;
+  background: currentColor;
+  margin-left: 2px;
+  vertical-align: text-bottom;
+  animation: caretBlink 1s steps(1) infinite;
+}
+@keyframes caretBlink { 50% { opacity: 0; } }
+
+/* Agent card magnetic/tilt hover */
+.landing .agent-card {
+  transition: transform 320ms cubic-bezier(0.22, 1, 0.36, 1),
+              box-shadow 320ms cubic-bezier(0.22, 1, 0.36, 1);
+  transform-origin: center;
+  will-change: transform;
+}
+.landing .agent-card:hover {
+  transform: translateY(-4px) rotate(-0.35deg);
+  box-shadow: 0 18px 40px -18px rgba(31, 50, 38, 0.35),
+              0 2px 6px -2px rgba(31, 50, 38, 0.18);
+}
+
+/* Underline sweep for nav / CTAs */
+.landing .sweep {
+  background-image: linear-gradient(currentColor, currentColor);
+  background-size: 0 1px;
+  background-position: 0 100%;
+  background-repeat: no-repeat;
+  transition: background-size 420ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+.landing .sweep:hover { background-size: 100% 1px; }
+
+/* Primary CTA — ink pill with inset sheen */
+.landing .btn-ink {
+  background: var(--ink);
+  color: var(--paper);
+  border-radius: 999px;
+  padding: 0.95rem 1.6rem;
+  font-weight: 500;
+  letter-spacing: 0.01em;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.6rem;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.12),
+              0 12px 30px -14px rgba(27, 26, 23, 0.55);
+  transition: transform 220ms cubic-bezier(0.22, 1, 0.36, 1),
+              box-shadow 220ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+.landing .btn-ink:hover {
+  transform: translateY(-1px);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.18),
+              0 18px 36px -16px rgba(27, 26, 23, 0.7);
+}
+.landing .btn-ink:active { transform: translateY(0); }
+
+.landing .btn-ghost {
+  color: var(--ink);
+  border: 1px solid var(--rule);
+  border-radius: 999px;
+  padding: 0.9rem 1.4rem;
+  font-weight: 500;
+  background: transparent;
+  transition: border-color 220ms ease, color 220ms ease, background 220ms ease;
+}
+.landing .btn-ghost:hover { border-color: var(--ink); background: rgba(27,26,23,0.04); }
+
+/* Memory thread — flowing SVG path animation */
+@keyframes threadDraw {
+  from { stroke-dashoffset: 1000; }
+  to { stroke-dashoffset: 0; }
+}
+.landing .thread path {
+  stroke-dasharray: 1000;
+  stroke-dashoffset: 1000;
+}
+.landing .thread.is-in path {
+  animation: threadDraw 2.6s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+/* Ticker for section labels */
+.landing .kicker {
+  font-family: "Geist", sans-serif;
+  font-size: 0.72rem;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--forest);
+  font-weight: 500;
+}
+
+/* Batik-inspired ornamental divider */
+.landing .ornament {
+  display: inline-flex;
+  gap: 0.75rem;
+  align-items: center;
+  color: var(--forest);
+  opacity: 0.55;
+  font-size: 0.85rem;
+}
+
+/* Subtle float anim for the live chat bubbles */
+@keyframes bubbleRise {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.landing .bubble-rise { animation: bubbleRise 420ms cubic-bezier(0.22, 1, 0.36, 1) both; }
+
+@media (prefers-reduced-motion: reduce) {
+  .landing .reveal { opacity: 1; transform: none; transition: none; }
+  .landing .thread.is-in path { animation: none; stroke-dashoffset: 0; }
+  .landing .caret { animation: none; }
+}
