@@ -1,4 +1,5 @@
 import type { Agent } from "@aman-tg/shared";
+import { JiranMerchantSection } from "./JiranMerchantSection";
 
 const EXAMPLE_PROMPTS: Record<string, string[]> = {
   coding: ["Fix this React hook", "Write a REST API in Node.js", "Explain async/await"],
@@ -14,6 +15,8 @@ const EXAMPLE_PROMPTS: Record<string, string[]> = {
   travel: ["3-day Langkawi itinerary", "Budget trip to Bangkok", "Best time to visit Japan"],
   resume: ["Review my resume", "Write a cover letter", "Improve my LinkedIn summary"],
   quran: ["Tafsir Surah Al-Fatihah", "Dua for morning", "Explain Surah Al-Mulk"],
+  jiran: ["Tapau nasi lemak untuk 2", "Apa kedai buka sekarang?", "Order kek coklat"],
+  todo: ["Add task: call mom", "What are my tasks today?", "Mark laundry as done"],
 };
 
 interface Props {
@@ -21,9 +24,16 @@ interface Props {
   onStartChat: () => void;
   onBack: () => void;
   userPlan?: string;
+  onSelectMerchant?: (merchantId: string, merchantName: string) => void;
 }
 
-export function AgentDetail({ agent, onStartChat, onBack, userPlan = "free" }: Props) {
+export function AgentDetail({
+  agent,
+  onStartChat,
+  onBack,
+  userPlan = "free",
+  onSelectMerchant,
+}: Props) {
   const locked = agent.premium && userPlan === "free";
   const examples = EXAMPLE_PROMPTS[agent.id] || ["Hello!", "Help me with something", "Tell me about yourself"];
 
@@ -92,6 +102,37 @@ export function AgentDetail({ agent, onStartChat, onBack, userPlan = "free" }: P
             ))}
           </div>
         </div>
+
+        {/* Jiran's inline merchant section */}
+        {agent.id === "jiran" && onSelectMerchant && (
+          <>
+            <div className="px-4 pb-2">
+              <div className="flex items-center gap-3" aria-hidden>
+                <div
+                  className="flex-1 h-px"
+                  style={{
+                    background:
+                      "color-mix(in srgb, var(--tg-theme-text-color) 10%, transparent)",
+                  }}
+                />
+                <span
+                  className="text-[11px] tracking-[0.22em] uppercase"
+                  style={{ color: "var(--tg-theme-hint-color)" }}
+                >
+                  · ✦ ·
+                </span>
+                <div
+                  className="flex-1 h-px"
+                  style={{
+                    background:
+                      "color-mix(in srgb, var(--tg-theme-text-color) 10%, transparent)",
+                  }}
+                />
+              </div>
+            </div>
+            <JiranMerchantSection onSelectMerchant={onSelectMerchant} />
+          </>
+        )}
 
         {/* Share */}
         <div className="px-4 pb-6">

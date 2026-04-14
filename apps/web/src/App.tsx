@@ -159,6 +159,7 @@ export function App() {
         onStartChat={() => openChat(stack.agent)}
         onBack={popStack}
         userPlan={userPlan}
+        onSelectMerchant={handleSelectMerchant}
       />
     );
   }
