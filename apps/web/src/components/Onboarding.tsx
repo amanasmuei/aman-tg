@@ -2,17 +2,19 @@ import { useState } from "react";
 import { AGENTS } from "@aman-tg/shared";
 import type { Agent } from "@aman-tg/shared";
 import { t } from "../lib/i18n";
+import { getAgentIcon, getAccent } from "../lib/icons";
+import { tap, selectionChange } from "../lib/haptics";
 
 function StepIndicator({ current }: { current: number }) {
   return (
-    <div className="flex gap-2 justify-center mb-6">
+    <div className="flex gap-2 justify-center mb-10">
       {[0, 1, 2].map((i) => (
         <div
           key={i}
           className="h-1 rounded-full transition-all duration-300"
           style={{
             width: i === current ? "32px" : "12px",
-            background: i <= current ? "var(--tg-theme-button-color)" : "var(--tg-theme-secondary-bg-color)",
+            background: i <= current ? "var(--terra)" : "var(--ink-2)",
           }}
         />
       ))}
@@ -39,6 +41,7 @@ export function Onboarding({ onComplete }: Props) {
   const [recommended, setRecommended] = useState<Agent[]>([]);
 
   const handleInterestToggle = (id: string) => {
+    selectionChange();
     const next = new Set(selected);
     if (next.has(id)) next.delete(id);
     else next.add(id);
@@ -46,14 +49,14 @@ export function Onboarding({ onComplete }: Props) {
   };
 
   const handleContinue = () => {
-    // Map interests to agent categories and recommend
+    tap("light");
     const categoryMap: Record<string, string[]> = {
       coding: ["coding"],
       education: ["education"],
       business: ["business"],
       lifestyle: ["lifestyle"],
       personal: ["personal"],
-      islamic: ["education"], // Quran Companion is in education
+      islamic: ["education"],
     };
 
     const targetCategories = new Set<string>();
@@ -62,16 +65,12 @@ export function Onboarding({ onComplete }: Props) {
       for (const c of cats) targetCategories.add(c);
     }
 
-    // Special handling for islamic interest
     const wantIslamic = selected.has("islamic");
-
     let recs = AGENTS.filter((a) => !a.premium && targetCategories.has(a.category));
     if (wantIslamic) {
       const quran = AGENTS.find((a) => a.id === "quran");
       if (quran && !recs.find((r) => r.id === "quran")) recs.push(quran);
     }
-
-    // If no matches or too few, add defaults
     if (recs.length < 2) {
       const defaults = AGENTS.filter((a) => !a.premium && !recs.find((r) => r.id === a.id));
       recs = [...recs, ...defaults].slice(0, 3);
@@ -83,20 +82,49 @@ export function Onboarding({ onComplete }: Props) {
 
   if (step === "welcome") {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center px-6 text-center">
+      <div
+        className="min-h-screen flex flex-col items-center justify-center px-6 text-center"
+        style={{ background: "var(--ink-0)" }}
+      >
         <StepIndicator current={0} />
-        <div className="text-5xl mb-4">🤖</div>
-        <h1 className="text-2xl font-bold mb-2">Welcome to aman</h1>
-        <p className="text-sm mb-8" style={{ color: "var(--tg-theme-hint-color)" }}>
-          Your AI companion that remembers you.
-          Let's find the right agents for you.
+        <div className="mb-5" aria-hidden>
+          <span
+            className="display"
+            style={{
+              color: "var(--sun)",
+              fontSize: "48px",
+              letterSpacing: "0.3em",
+            }}
+          >
+            · ✦ ·
+          </span>
+        </div>
+        <h1
+          className="display display-soft mb-3"
+          style={{
+            color: "var(--paper)",
+            fontSize: "40px",
+            fontWeight: 400,
+            letterSpacing: "-0.02em",
+            lineHeight: 1.05,
+          }}
+        >
+          {t("welcomeTo")}
+        </h1>
+        <p
+          className="text-[15px] mb-10 leading-relaxed max-w-xs"
+          style={{ color: "var(--paper-2)" }}
+        >
+          {t("welcomeDesc")}
         </p>
         <button
-          onClick={() => setStep("interests")}
-          className="rounded-full px-8 py-3 text-sm font-semibold transition-transform active:scale-95"
-          style={{ background: "var(--tg-theme-button-color)", color: "var(--tg-theme-button-text-color)" }}
+          onClick={() => {
+            tap("medium");
+            setStep("interests");
+          }}
+          className="btn-terra text-sm"
         >
-          Let's Go
+          {t("letsGo")}
         </button>
       </div>
     );
@@ -104,32 +132,60 @@ export function Onboarding({ onComplete }: Props) {
 
   if (step === "interests") {
     return (
-      <div className="min-h-screen flex flex-col px-6 pt-12">
+      <div
+        className="min-h-screen flex flex-col px-6 pt-12 pb-8"
+        style={{ background: "var(--ink-0)" }}
+      >
         <StepIndicator current={1} />
-        <h2 className="text-xl font-bold mb-2 text-center">What are you into?</h2>
-        <p className="text-sm text-center mb-6" style={{ color: "var(--tg-theme-hint-color)" }}>
-          Pick your interests — we'll recommend agents for you
+        <h2
+          className="display mb-2 text-center"
+          style={{
+            color: "var(--paper)",
+            fontSize: "26px",
+            fontWeight: 500,
+            letterSpacing: "-0.01em",
+          }}
+        >
+          {t("whatAreYouInto")}
+        </h2>
+        <p
+          className="text-sm text-center mb-8"
+          style={{ color: "var(--paper-2)" }}
+        >
+          {t("pickInterests")}
         </p>
 
-        <div className="grid grid-cols-2 gap-3 mb-8">
+        <div className="grid grid-cols-2 gap-3 mb-10">
           {INTERESTS.map((interest) => {
             const isSelected = selected.has(interest.id);
             return (
               <button
                 key={interest.id}
                 onClick={() => handleInterestToggle(interest.id)}
-                className="rounded-xl p-4 text-left transition-all active:scale-95"
+                className="rounded-2xl p-4 text-left transition-all active:scale-[0.97]"
                 style={{
-                  background: isSelected ? "var(--tg-theme-button-color)" : "var(--tg-theme-secondary-bg-color)",
-                  color: isSelected ? "var(--tg-theme-button-text-color)" : "var(--tg-theme-text-color)",
-                  border: isSelected ? "2px solid var(--tg-theme-button-color)" : "2px solid transparent",
+                  background: isSelected ? "var(--terra)" : "var(--ink-2)",
+                  color: isSelected ? "var(--ink-0)" : "var(--paper)",
+                  border: `1px solid ${isSelected ? "var(--terra)" : "var(--rule)"}`,
+                  boxShadow: isSelected
+                    ? "0 8px 24px -10px rgba(199, 122, 82, 0.55)"
+                    : "none",
                 }}
               >
-                <div className="flex items-center justify-between">
+                <div className="flex items-center justify-between mb-1.5">
                   <span className="text-2xl">{interest.icon}</span>
-                  {isSelected && <span className="text-sm">✓</span>}
+                  {isSelected && (
+                    <span
+                      className="mono text-xs font-bold"
+                      style={{ color: "var(--ink-0)" }}
+                    >
+                      ✓
+                    </span>
+                  )}
                 </div>
-                <div className="text-sm font-medium mt-1">{interest.label}</div>
+                <div className="display text-sm leading-tight" style={{ fontWeight: 500 }}>
+                  {interest.label}
+                </div>
               </button>
             );
           })}
@@ -138,10 +194,9 @@ export function Onboarding({ onComplete }: Props) {
         <button
           onClick={handleContinue}
           disabled={selected.size === 0}
-          className="rounded-full px-8 py-3 text-sm font-semibold transition-transform active:scale-95 disabled:opacity-30 mx-auto"
-          style={{ background: "var(--tg-theme-button-color)", color: "var(--tg-theme-button-text-color)" }}
+          className="btn-terra text-sm disabled:opacity-40 disabled:cursor-not-allowed mx-auto"
         >
-          Show My Agents ({selected.size} selected)
+          {t("showMyAgents")} ({selected.size} {t("selected")})
         </button>
       </div>
     );
@@ -149,46 +204,91 @@ export function Onboarding({ onComplete }: Props) {
 
   // Recommendation step
   return (
-    <div className="min-h-screen flex flex-col px-6 pt-12">
+    <div
+      className="min-h-screen flex flex-col px-6 pt-12 pb-8"
+      style={{ background: "var(--ink-0)" }}
+    >
       <StepIndicator current={2} />
-      <h2 className="text-xl font-bold mb-2 text-center">Perfect for you!</h2>
-      <p className="text-sm text-center mb-6" style={{ color: "var(--tg-theme-hint-color)" }}>
-        Based on your interests, try these agents:
+      <h2
+        className="display mb-2 text-center"
+        style={{
+          color: "var(--paper)",
+          fontSize: "26px",
+          fontWeight: 500,
+          letterSpacing: "-0.01em",
+        }}
+      >
+        {t("perfectForYou")}
+      </h2>
+      <p
+        className="text-sm text-center mb-8"
+        style={{ color: "var(--paper-2)" }}
+      >
+        {t("basedOnInterests")}
       </p>
 
       <div className="space-y-3 mb-8">
-        {recommended.map((agent) => (
-          <button
-            key={agent.id}
-            onClick={() => onComplete(agent)}
-            className="w-full rounded-xl p-4 text-left transition-transform active:scale-95 flex items-center gap-4"
-            style={{ background: "var(--tg-theme-secondary-bg-color)" }}
-          >
-            <span className="text-3xl flex-shrink-0">{agent.icon}</span>
-            <div>
-              <div className="font-semibold text-sm">{agent.name}</div>
-              <p className="text-xs mt-0.5" style={{ color: "var(--tg-theme-hint-color)" }}>
-                {agent.description}
-              </p>
-            </div>
-          </button>
-        ))}
+        {recommended.map((agent) => {
+          const Icon = getAgentIcon(agent.id);
+          const accent = getAccent(agent.category);
+          return (
+            <button
+              key={agent.id}
+              onClick={() => {
+                tap("medium");
+                onComplete(agent);
+              }}
+              className="w-full rounded-2xl p-4 text-left transition-transform active:scale-[0.98] flex items-center gap-4 card-night"
+            >
+              <div
+                className="w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0"
+                style={{
+                  background: accent.bg,
+                  boxShadow: `0 6px 20px -10px ${accent.fg}`,
+                }}
+              >
+                <Icon size={22} strokeWidth={2} style={{ color: accent.fg }} />
+              </div>
+              <div className="min-w-0">
+                <div
+                  className="display"
+                  style={{
+                    color: "var(--paper)",
+                    fontSize: "15px",
+                    fontWeight: 500,
+                    letterSpacing: "-0.01em",
+                  }}
+                >
+                  {agent.name}
+                </div>
+                <p
+                  className="text-xs mt-0.5 line-clamp-2"
+                  style={{ color: "var(--paper-2)" }}
+                >
+                  {agent.description}
+                </p>
+              </div>
+            </button>
+          );
+        })}
       </div>
 
       <button
-        onClick={() => onComplete(recommended[0])}
-        className="rounded-full px-8 py-3 text-sm font-semibold transition-transform active:scale-95 mx-auto"
-        style={{ background: "var(--tg-theme-button-color)", color: "var(--tg-theme-button-text-color)" }}
+        onClick={() => {
+          tap("medium");
+          onComplete(recommended[0]);
+        }}
+        className="btn-terra text-sm mx-auto"
       >
-        Start Chatting
+        {t("startChatting")}
       </button>
 
       <button
         onClick={() => onComplete(AGENTS[0])}
-        className="text-sm mt-3 mx-auto py-2"
-        style={{ color: "var(--tg-theme-hint-color)" }}
+        className="text-sm mt-3 mx-auto py-2 sweep-line"
+        style={{ color: "var(--paper-3)" }}
       >
-        Skip — browse all agents
+        {t("browseAll")}
       </button>
     </div>
   );
