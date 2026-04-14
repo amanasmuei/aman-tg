@@ -44,7 +44,7 @@ export function ChatView({ agent, onBack, conversationId, initialMerchantId, ini
   const [attachment, setAttachment] = useState<Attachment | null>(null);
   const [isNewChat, setIsNewChat] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  const inputRef = useRef<HTMLInputElement>(null);
+  const inputRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [showScrollBtn, setShowScrollBtn] = useState(false);
   const chatContainerRef = useRef<HTMLDivElement>(null);
@@ -53,6 +53,27 @@ export function ChatView({ agent, onBack, conversationId, initialMerchantId, ini
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
+
+  // Coarse pointer = touch device (phone/tablet). On these, Enter must insert
+  // a newline so the OS keyboard shows a proper return key — send is via button.
+  const [isTouch, setIsTouch] = useState(false);
+  useEffect(() => {
+    if (typeof window === "undefined" || !window.matchMedia) return;
+    const mq = window.matchMedia("(pointer: coarse)");
+    const update = () => setIsTouch(mq.matches);
+    update();
+    mq.addEventListener?.("change", update);
+    return () => mq.removeEventListener?.("change", update);
+  }, []);
+
+  // Auto-grow the textarea with the content, capped so it never eats the chat.
+  useEffect(() => {
+    const el = inputRef.current;
+    if (!el) return;
+    el.style.height = "auto";
+    const max = 140; // ~5 lines at 14px
+    el.style.height = `${Math.min(el.scrollHeight, max)}px`;
+  }, [input]);
 
   // Load conversation history on mount
   useEffect(() => {
@@ -491,17 +512,26 @@ export function ChatView({ agent, onBack, conversationId, initialMerchantId, ini
             onChange={handleFileSelect}
             className="hidden"
           />
-          <input
+          <textarea
             ref={inputRef}
-            type="text"
+            rows={1}
             value={input}
             onChange={(e) => setInput(e.target.value)}
-            onKeyDown={(e) => e.key === "Enter" && sendMessage()}
+            onKeyDown={(e) => {
+              if (e.key !== "Enter" || e.nativeEvent.isComposing) return;
+              // Touch devices: Enter always = newline (native textarea behavior).
+              if (isTouch) return;
+              // Desktop: Shift+Enter = newline, plain Enter = send.
+              if (e.shiftKey) return;
+              e.preventDefault();
+              sendMessage();
+            }}
             placeholder={attachment ? t("addCaption") : t("typeMessage")}
-            className="flex-1 rounded-full px-4 py-2.5 text-sm outline-none"
+            className="flex-1 rounded-3xl px-4 py-2.5 text-sm outline-none resize-none leading-5"
             style={{
               background: "var(--tg-theme-secondary-bg-color)",
               color: "var(--tg-theme-text-color)",
+              maxHeight: "140px",
             }}
             disabled={loading}
           />
