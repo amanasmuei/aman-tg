@@ -9,6 +9,8 @@ interface TelegramWebApp {
       language_code?: string;
       is_premium?: boolean;
     };
+    /** Set when the app is launched via `t.me/bot/app?startapp=<param>`. */
+    start_param?: string;
     [key: string]: unknown;
   };
   ready: () => void;
