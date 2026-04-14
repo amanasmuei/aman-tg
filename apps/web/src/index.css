@@ -1,13 +1,38 @@
 @import "tailwindcss";
 
 :root {
-  --tg-theme-bg-color: #0d1117;
-  --tg-theme-text-color: #c9d1d9;
-  --tg-theme-hint-color: #8b949e;
-  --tg-theme-link-color: #58a6ff;
-  --tg-theme-button-color: #238636;
-  --tg-theme-button-text-color: #ffffff;
-  --tg-theme-secondary-bg-color: #161b22;
+  /* Tactile Night — warm editorial dark palette (new brand tokens) */
+  --ink-0: #0d0b08;
+  --ink-1: #171410;
+  --ink-2: #211d18;
+  --ink-3: #2b2621;
+  --paper: #ede5d0;
+  --paper-2: #c8bda4;
+  --paper-3: #8a8272;
+  --forest: #4a7c5c;
+  --terra: #c77a52;
+  --sun: #d4a93b;
+  --ember: #e85d4a;
+  --rule: rgba(237, 229, 208, 0.08);
+  --rule-2: rgba(237, 229, 208, 0.14);
+
+  /* Motion tokens */
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+  --dur-fast: 120ms;
+  --dur-med: 220ms;
+  --dur-slow: 420ms;
+
+  /* Telegram theme vars — point them at the new tokens so legacy refs
+     (ChatView, Markdown) inherit the Tactile Night palette instead of
+     whatever Telegram hands us. Keeps one source of truth. */
+  --tg-theme-bg-color: var(--ink-0);
+  --tg-theme-text-color: var(--paper);
+  --tg-theme-hint-color: var(--paper-3);
+  --tg-theme-link-color: var(--terra);
+  --tg-theme-button-color: var(--terra);
+  --tg-theme-button-text-color: var(--ink-0);
+  --tg-theme-secondary-bg-color: var(--ink-2);
 
   /* Markdown renderer tokens (derive from tg-theme, readable on either side) */
   --md-rule: color-mix(in srgb, var(--tg-theme-text-color) 14%, transparent);
@@ -24,11 +49,43 @@
 body {
   margin: 0;
   padding: 0;
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-  background: var(--tg-theme-bg-color);
-  color: var(--tg-theme-text-color);
+  font-family: "Geist", ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+  font-feature-settings: "ss01", "ss02";
+  -webkit-font-smoothing: antialiased;
+  letter-spacing: -0.005em;
+  background: var(--ink-0);
+  color: var(--paper);
   min-height: 100vh;
   overflow-x: hidden;
+  position: relative;
+}
+
+/* Ambient paper-grain overlay — fixed, faint, warm. Sits above body bg
+   but below content. Mirrors the Landing treatment at lower opacity. */
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='240' height='240'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0.9 0 0 0 0 0.85 0 0 0 0 0.75 0 0 0 0.15 0'/></filter><rect width='100%25' height='100%25' filter='url(%23n)'/></svg>");
+  mix-blend-mode: overlay;
+  opacity: 0.35;
+}
+#root { position: relative; z-index: 1; }
+
+/* Landing scope resets its own ::before — make sure we don't double-layer. */
+.landing::before { z-index: 1; }
+
+.display {
+  font-family: "Fraunces", ui-serif, Georgia, serif;
+  letter-spacing: -0.02em;
+}
+.display-soft {
+  font-variation-settings: "opsz" 144, "SOFT" 100, "wght" 380;
+}
+.mono {
+  font-family: "JetBrains Mono", ui-monospace, monospace;
 }
 
 * {
@@ -38,7 +95,7 @@ body {
 /* Scrollbar styling */
 ::-webkit-scrollbar { width: 4px; }
 ::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: var(--tg-theme-hint-color); border-radius: 2px; }
+::-webkit-scrollbar-thumb { background: var(--paper-3); border-radius: 2px; }
 
 /* Hide scrollbar for horizontal filter chip rows */
 .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
@@ -55,8 +112,108 @@ body {
 /* Utility: soft card shadow */
 .card-soft {
   box-shadow:
-    0 1px 2px rgba(0, 0, 0, 0.25),
-    0 0 0 1px rgba(255, 255, 255, 0.04);
+    0 1px 2px rgba(0, 0, 0, 0.35),
+    0 0 0 1px var(--rule);
+}
+
+/* Primary CTA — terra pill with inset sheen (Tactile Night twin of Landing .btn-ink) */
+.btn-terra {
+  background: var(--terra);
+  color: var(--ink-0);
+  border-radius: 999px;
+  padding: 0.85rem 1.4rem;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.18),
+    0 10px 28px -12px rgba(199, 122, 82, 0.55);
+  transition:
+    transform var(--dur-med) var(--ease-spring),
+    box-shadow var(--dur-med) var(--ease-out);
+}
+.btn-terra:active {
+  transform: scale(0.97);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.12),
+    0 6px 16px -10px rgba(199, 122, 82, 0.7);
+}
+
+/* Ghost button — ink-2 fill with rule outline */
+.btn-ghost-night {
+  background: transparent;
+  color: var(--paper);
+  border: 1px solid var(--rule-2);
+  border-radius: 999px;
+  padding: 0.8rem 1.3rem;
+  font-weight: 500;
+  transition:
+    background var(--dur-med) var(--ease-out),
+    border-color var(--dur-med) var(--ease-out);
+}
+.btn-ghost-night:active {
+  background: var(--ink-2);
+  border-color: var(--paper-3);
+}
+
+/* Card gradient — used by AgentCard, ResumeStrip cards, etc. */
+.card-night {
+  background: linear-gradient(180deg, var(--ink-2) 0%, var(--ink-1) 100%);
+  border: 1px solid var(--rule);
+}
+
+/* Section kicker — mono, uppercase, tracked, used for group labels */
+.kicker-night {
+  font-family: "JetBrains Mono", ui-monospace, monospace;
+  font-size: 0.68rem;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--paper-3);
+  font-weight: 500;
+}
+
+/* Batik-inspired ornament for Tactile Night — mirrors Landing's .ornament */
+.ornament-night {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  color: var(--paper-3);
+}
+.ornament-night::before,
+.ornament-night::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: var(--rule-2);
+}
+.ornament-night-glyph {
+  font-family: "Fraunces", serif;
+  font-size: 0.9rem;
+  letter-spacing: 0.3em;
+  opacity: 0.7;
+}
+
+/* Staggered reveal for Teman open — fires on mount */
+.reveal-in {
+  opacity: 0;
+  animation: revealIn var(--dur-slow) var(--ease-out) forwards;
+  animation-delay: var(--reveal-delay, 0ms);
+}
+@keyframes revealIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* Stack-push slide for AgentDetail / ChatView */
+.stack-push {
+  animation: stackPush var(--dur-med) var(--ease-out);
+}
+@keyframes stackPush {
+  from { opacity: 0; transform: translateY(12px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 
 /* Utility: generic fade-in (used by menu dropdown, empty states, floating chip) */
@@ -299,4 +456,6 @@ body {
   .landing .reveal { opacity: 1; transform: none; transition: none; }
   .landing .thread.is-in path { animation: none; stroke-dashoffset: 0; }
   .landing .caret { animation: none; }
+  .reveal-in { animation: none; opacity: 1; transform: none; }
+  .stack-push { animation: none; }
 }

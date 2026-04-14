@@ -1,5 +1,8 @@
 import type { Agent } from "@aman-tg/shared";
 import { JiranMerchantSection } from "./JiranMerchantSection";
+import { getAgentIcon, getAccent, ChevronRight, Star, Lock } from "../lib/icons";
+import { t } from "../lib/i18n";
+import { tap } from "../lib/haptics";
 
 const EXAMPLE_PROMPTS: Record<string, string[]> = {
   coding: ["Fix this React hook", "Write a REST API in Node.js", "Explain async/await"],
@@ -35,69 +38,170 @@ export function AgentDetail({
   onSelectMerchant,
 }: Props) {
   const locked = agent.premium && userPlan === "free";
-  const examples = EXAMPLE_PROMPTS[agent.id] || ["Hello!", "Help me with something", "Tell me about yourself"];
+  const examples =
+    EXAMPLE_PROMPTS[agent.id] || [
+      "Hello!",
+      "Help me with something",
+      "Tell me about yourself",
+    ];
+  const Icon = getAgentIcon(agent.id);
+  const accent = getAccent(agent.category);
 
   return (
-    <div className="flex flex-col h-screen">
+    <div
+      className="flex flex-col h-screen stack-push"
+      style={{ background: "var(--ink-0)" }}
+    >
       {/* Header */}
-      <div className="flex items-center gap-3 px-4 py-3 border-b"
-           style={{ borderColor: "var(--tg-theme-secondary-bg-color)", background: "var(--tg-theme-bg-color)" }}>
-        <button onClick={onBack} className="text-lg p-1">←</button>
-        <div className="font-semibold text-sm">Agent Details</div>
+      <div
+        className="flex items-center gap-3 px-4 py-3"
+        style={{ borderBottom: "1px solid var(--rule)" }}
+      >
+        <button
+          onClick={() => {
+            tap("light");
+            onBack();
+          }}
+          className="w-9 h-9 rounded-full flex items-center justify-center transition-transform active:scale-95"
+          style={{
+            background: "var(--ink-2)",
+            border: "1px solid var(--rule)",
+            color: "var(--paper)",
+          }}
+          aria-label="Back"
+        >
+          ←
+        </button>
+        <div
+          className="mono text-[11px]"
+          style={{ color: "var(--paper-3)", letterSpacing: "0.18em" }}
+        >
+          {t("agentDetails").toUpperCase()}
+        </div>
       </div>
 
       <div className="flex-1 overflow-y-auto">
         {/* Hero */}
-        <div className="text-center px-6 pt-8 pb-6">
-          <div className="text-5xl mb-3">{agent.icon}</div>
-          <h1 className="text-xl font-bold mb-1 flex items-center justify-center gap-2">
+        <div className="px-6 pt-10 pb-6">
+          <div
+            className="w-16 h-16 rounded-2xl flex items-center justify-center mb-5"
+            style={{
+              background: accent.bg,
+              boxShadow: `0 12px 32px -12px ${accent.fg}`,
+            }}
+          >
+            <Icon size={30} strokeWidth={2} style={{ color: accent.fg }} />
+          </div>
+          <h1
+            className="display display-soft flex items-center gap-2"
+            style={{
+              color: "var(--paper)",
+              fontSize: "34px",
+              letterSpacing: "-0.02em",
+              lineHeight: 1.05,
+              marginBottom: "4px",
+            }}
+          >
             {agent.name}
-            {agent.premium && <span className="text-sm">⭐</span>}
+            {agent.premium && (
+              <Star
+                size={18}
+                fill="var(--sun)"
+                stroke="var(--sun)"
+                className="flex-shrink-0"
+              />
+            )}
+            {locked && (
+              <Lock size={16} style={{ color: "var(--paper-3)" }} />
+            )}
           </h1>
-          <p className="text-sm" style={{ color: "var(--tg-theme-hint-color)" }}>
+          <div
+            className="mono text-[12px] mb-4"
+            style={{ color: "var(--paper-3)", letterSpacing: "0.02em" }}
+          >
+            @{agent.id}
+          </div>
+          <p
+            className="text-[15px] leading-relaxed"
+            style={{ color: "var(--paper-2)" }}
+          >
             {agent.description}
           </p>
-          <div className="flex gap-2 justify-center mt-3 flex-wrap">
+          <div className="flex gap-1.5 mt-4 flex-wrap">
             {agent.tags.map((tag) => (
-              <span key={tag} className="text-xs px-2 py-1 rounded-full"
-                    style={{ background: "var(--tg-theme-secondary-bg-color)", color: "var(--tg-theme-hint-color)" }}>
+              <span
+                key={tag}
+                className="mono text-[10px] font-medium px-2 py-0.5 rounded-full"
+                style={{
+                  background: "var(--ink-2)",
+                  color: "var(--paper-3)",
+                  letterSpacing: "0.02em",
+                  border: "1px solid var(--rule)",
+                }}
+              >
                 {tag}
               </span>
             ))}
           </div>
         </div>
 
-        {/* Personality */}
+        {/* Personality / Style */}
         <div className="px-4 pb-4">
-          <div className="rounded-xl p-4" style={{ background: "var(--tg-theme-secondary-bg-color)" }}>
-            <h2 className="text-xs font-semibold uppercase mb-2" style={{ color: "var(--tg-theme-hint-color)" }}>
-              Personality
-            </h2>
-            <p className="text-sm leading-relaxed">{agent.personality}</p>
-            <h2 className="text-xs font-semibold uppercase mt-3 mb-2" style={{ color: "var(--tg-theme-hint-color)" }}>
-              Style
-            </h2>
-            <p className="text-sm leading-relaxed">{agent.style}</p>
+          <div
+            className="rounded-2xl p-4 card-night"
+            style={{ background: "var(--ink-2)" }}
+          >
+            <h2 className="kicker-night mb-2">{t("personality")}</h2>
+            <p
+              className="text-sm leading-relaxed mb-4"
+              style={{ color: "var(--paper)" }}
+            >
+              {agent.personality}
+            </p>
+            <h2 className="kicker-night mb-2">{t("style")}</h2>
+            <p
+              className="text-sm leading-relaxed"
+              style={{ color: "var(--paper)" }}
+            >
+              {agent.style}
+            </p>
           </div>
         </div>
 
         {/* Example prompts */}
         <div className="px-4 pb-4">
-          <h2 className="text-xs font-semibold uppercase mb-3" style={{ color: "var(--tg-theme-hint-color)" }}>
-            Try asking
-          </h2>
+          <h2 className="kicker-night mb-3 px-1">{t("tryAsking")}</h2>
           <div className="space-y-2">
             {examples.map((prompt) => (
               <button
                 key={prompt}
-                onClick={locked ? undefined : onStartChat}
-                className="w-full text-left rounded-xl px-4 py-3 text-sm transition-transform active:scale-98"
+                onClick={
+                  locked
+                    ? undefined
+                    : () => {
+                        tap("light");
+                        onStartChat();
+                      }
+                }
+                className="w-full text-left rounded-2xl px-4 py-3 text-sm transition-transform active:scale-[0.98] flex items-center justify-between gap-2 card-night"
                 style={{
-                  background: "var(--tg-theme-secondary-bg-color)",
                   opacity: locked ? 0.5 : 1,
                 }}
               >
-                "{prompt}"
+                <span
+                  className="display italic"
+                  style={{
+                    color: "var(--paper)",
+                    fontSize: "14px",
+                    fontWeight: 400,
+                  }}
+                >
+                  “{prompt}”
+                </span>
+                <ChevronRight
+                  size={14}
+                  style={{ color: "var(--paper-3)" }}
+                />
               </button>
             ))}
           </div>
@@ -106,28 +210,9 @@ export function AgentDetail({
         {/* Jiran's inline merchant section */}
         {agent.id === "jiran" && onSelectMerchant && (
           <>
-            <div className="px-4 pb-2">
-              <div className="flex items-center gap-3" aria-hidden>
-                <div
-                  className="flex-1 h-px"
-                  style={{
-                    background:
-                      "color-mix(in srgb, var(--tg-theme-text-color) 10%, transparent)",
-                  }}
-                />
-                <span
-                  className="text-[11px] tracking-[0.22em] uppercase"
-                  style={{ color: "var(--tg-theme-hint-color)" }}
-                >
-                  · ✦ ·
-                </span>
-                <div
-                  className="flex-1 h-px"
-                  style={{
-                    background:
-                      "color-mix(in srgb, var(--tg-theme-text-color) 10%, transparent)",
-                  }}
-                />
+            <div className="px-4 pb-3 pt-1">
+              <div className="ornament-night">
+                <span className="ornament-night-glyph">· ✦ ·</span>
               </div>
             </div>
             <JiranMerchantSection onSelectMerchant={onSelectMerchant} />
@@ -140,32 +225,45 @@ export function AgentDetail({
             onClick={() => {
               const link = `https://t.me/aman_agent_platform_bot?start=agent_${agent.id}`;
               navigator.clipboard.writeText(link);
+              tap("light");
             }}
-            className="w-full rounded-xl px-4 py-3 text-sm text-center"
-            style={{ background: "var(--tg-theme-secondary-bg-color)", color: "var(--tg-theme-hint-color)" }}
+            className="btn-ghost-night w-full text-sm"
           >
-            Share this agent 🔗
+            {t("shareAgent")}
           </button>
         </div>
       </div>
 
       {/* Bottom CTA */}
-      <div className="px-4 py-4 border-t"
-           style={{ borderColor: "var(--tg-theme-secondary-bg-color)", background: "var(--tg-theme-bg-color)" }}>
+      <div
+        className="px-4 py-4"
+        style={{
+          borderTop: "1px solid var(--rule)",
+          background: "var(--ink-0)",
+        }}
+      >
         {locked ? (
-          <div className="text-center text-sm" style={{ color: "var(--tg-theme-hint-color)" }}>
-            ⭐ Upgrade to Pro to unlock this agent — use /pro in the bot
+          <div
+            className="text-center text-sm"
+            style={{ color: "var(--paper-3)" }}
+          >
+            <Star
+              size={14}
+              fill="var(--sun)"
+              stroke="var(--sun)"
+              className="inline align-text-bottom mr-1"
+            />
+            {t("premiumRequired")}
           </div>
         ) : (
           <button
-            onClick={onStartChat}
-            className="w-full rounded-full py-3 text-sm font-semibold transition-transform active:scale-98"
-            style={{
-              background: "var(--tg-theme-button-color)",
-              color: "var(--tg-theme-button-text-color)",
+            onClick={() => {
+              tap("medium");
+              onStartChat();
             }}
+            className="btn-terra w-full text-sm"
           >
-            Start Chat with {agent.name}
+            {t("startChat")} {agent.name}
           </button>
         )}
       </div>

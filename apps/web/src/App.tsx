@@ -12,6 +12,7 @@ import { ResumeStrip } from "./components/ResumeStrip";
 import { KedaiCard } from "./components/KedaiCard";
 import { detectLocale, t } from "./lib/i18n";
 import { useTelegramId } from "./lib/useTelegramId";
+import { tap } from "./lib/haptics";
 import {
   filterMerchantsByQuery,
   type SearchableMerchant,
@@ -87,13 +88,19 @@ export function App() {
     return () => ac.abort();
   }, []);
 
-  const openDetail = (agent: Agent) => setStack({ kind: "detail", agent });
+  const openDetail = (agent: Agent) => {
+    tap("medium");
+    setStack({ kind: "detail", agent });
+  };
 
   const openChat = (
     agent: Agent,
     conversationId?: string,
     merchant?: { id: string; name: string },
-  ) => setStack({ kind: "chat", agent, conversationId, merchant });
+  ) => {
+    tap("medium");
+    setStack({ kind: "chat", agent, conversationId, merchant });
+  };
 
   const popStack = () => setStack({ kind: "none" });
 
@@ -159,13 +166,23 @@ export function App() {
     >
       {tab === "teman" && (
         <>
-          <Header onInvite={handleInvite} planExpiresAt={planExpiresAt} />
+          <div
+            className="reveal-in"
+            style={{ ["--reveal-delay" as string]: "0ms" }}
+          >
+            <Header onInvite={handleInvite} planExpiresAt={planExpiresAt} />
+          </div>
 
-          <SearchBar
-            value={search}
-            onChange={setSearch}
-            placeholder={t("searchUnifiedPlaceholder")}
-          />
+          <div
+            className="reveal-in"
+            style={{ ["--reveal-delay" as string]: "40ms" }}
+          >
+            <SearchBar
+              value={search}
+              onChange={setSearch}
+              placeholder={t("searchUnifiedPlaceholder")}
+            />
+          </div>
 
           {/* Invite banner — free or expiring-pro only */}
           {(() => {
@@ -184,57 +201,70 @@ export function App() {
               : t("inviteExtendProReward");
 
             return (
-              <div className="px-4 mb-3">
+              <div
+                className="px-4 mb-3 reveal-in"
+                style={{ ["--reveal-delay" as string]: "80ms" }}
+              >
                 <button
                   onClick={handleInvite}
                   className="w-full rounded-2xl px-4 py-2.5 flex items-center gap-3 transition-transform active:scale-[0.98]"
                   style={{
                     background:
-                      "linear-gradient(135deg, rgba(245,158,11,0.18) 0%, rgba(245,158,11,0.04) 70%), var(--tg-theme-secondary-bg-color)",
-                    border: "1px solid rgba(245,158,11,0.25)",
+                      "linear-gradient(135deg, color-mix(in srgb, var(--sun) 18%, transparent) 0%, color-mix(in srgb, var(--sun) 4%, transparent) 70%), var(--ink-2)",
+                    border: "1px solid color-mix(in srgb, var(--sun) 28%, transparent)",
                   }}
                 >
                   <div
                     className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0"
-                    style={{ background: "rgba(245,158,11,0.22)" }}
+                    style={{
+                      background:
+                        "color-mix(in srgb, var(--sun) 22%, transparent)",
+                    }}
                   >
                     <Gift
                       size={16}
                       strokeWidth={2.2}
-                      style={{ color: "#f59e0b" }}
+                      style={{ color: "var(--sun)" }}
                     />
                   </div>
                   <div className="flex-1 min-w-0 text-left">
                     <div
                       className="text-xs font-semibold leading-tight"
-                      style={{ color: "var(--tg-theme-text-color)" }}
+                      style={{ color: "var(--paper)" }}
                     >
                       {title}
                     </div>
                     <div
                       className="text-[11px] leading-tight mt-0.5"
-                      style={{ color: "var(--tg-theme-hint-color)" }}
+                      style={{ color: "var(--paper-2)" }}
                     >
                       {subtitle}
                     </div>
                   </div>
-                  <ChevronRight
-                    size={16}
-                    style={{ color: "var(--tg-theme-hint-color)" }}
-                  />
+                  <ChevronRight size={16} style={{ color: "var(--paper-3)" }} />
                 </button>
               </div>
             );
           })()}
 
-          <ResumeStrip onSelect={handleSelectConversation} />
+          <div
+            className="reveal-in"
+            style={{ ["--reveal-delay" as string]: "120ms" }}
+          >
+            <ResumeStrip onSelect={handleSelectConversation} />
+          </div>
 
-          <AgentGrid
-            onSelect={openDetail}
-            userPlan={userPlan}
-            searchQuery={search}
-            jiranMerchantCount={jiranMerchantCount || undefined}
-          />
+          <div
+            className="reveal-in"
+            style={{ ["--reveal-delay" as string]: "160ms" }}
+          >
+            <AgentGrid
+              onSelect={openDetail}
+              userPlan={userPlan}
+              searchQuery={search}
+              jiranMerchantCount={jiranMerchantCount || undefined}
+            />
+          </div>
 
           {/* Unified search: shop matches via Jiran. Renders only when the
               query has actual merchant hits, so a quiet search stays quiet. */}
@@ -244,10 +274,7 @@ export function App() {
               if (hits.length === 0) return null;
               return (
                 <div className="px-4 mt-2 mb-6">
-                  <div
-                    className="text-[11px] font-semibold tracking-wider uppercase mb-2"
-                    style={{ color: "var(--tg-theme-hint-color)" }}
-                  >
+                  <div className="kicker-night mb-2">
                     {t("searchResultsShops")}
                   </div>
                   <div className="space-y-3">

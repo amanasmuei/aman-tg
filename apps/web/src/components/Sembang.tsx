@@ -3,7 +3,8 @@ import { AGENTS } from "@aman-tg/shared";
 import { t } from "../lib/i18n";
 import { useTelegramId } from "../lib/useTelegramId";
 import { groupConversationsByTime } from "../lib/timeGrouping";
-import { MessageCircle } from "../lib/icons";
+import { MessageCircle, getAgentIcon, getAccent } from "../lib/icons";
+import { tap } from "../lib/haptics";
 
 interface ConversationItem {
   id: string;
@@ -57,45 +58,61 @@ export function Sembang({ onSelect, onGoToTeman }: Props) {
     if (list.length === 0) return null;
     return (
       <div key={label} className="mb-5">
-        <div
-          className="text-[11px] font-semibold tracking-wider uppercase mb-2 px-1"
-          style={{ color: "var(--tg-theme-hint-color)" }}
-        >
-          {label}
-        </div>
+        <div className="kicker-night mb-2 px-1">{label}</div>
         <div className="space-y-2">
           {list.map((conv) => {
             const agent = AGENTS.find((a) => a.id === conv.agent_id);
+            const Icon = getAgentIcon(conv.agent_id);
+            const accent = agent ? getAccent(agent.category) : null;
             return (
               <button
                 key={conv.id}
-                onClick={() => onSelect(conv.agent_id, conv.id)}
-                className="w-full text-left rounded-2xl p-3.5 flex items-center gap-3 transition-transform active:scale-[0.98]"
-                style={{ background: "var(--tg-theme-secondary-bg-color)" }}
+                onClick={() => {
+                  tap("light");
+                  onSelect(conv.agent_id, conv.id);
+                }}
+                className="w-full text-left rounded-2xl p-3.5 flex items-center gap-3 transition-transform active:scale-[0.98] card-night"
               >
-                <span className="text-xl flex-shrink-0">
-                  {agent?.icon || "💬"}
-                </span>
+                <div
+                  className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0"
+                  style={{ background: accent?.bg ?? "var(--ink-3)" }}
+                >
+                  <Icon
+                    size={18}
+                    strokeWidth={2}
+                    style={{ color: accent?.fg ?? "var(--paper-2)" }}
+                  />
+                </div>
                 <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2">
-                    <span className="font-semibold text-sm truncate">
+                  <div className="flex items-center gap-2 mb-0.5">
+                    <span
+                      className="display truncate"
+                      style={{
+                        color: "var(--paper)",
+                        fontSize: "15px",
+                        fontWeight: 500,
+                        letterSpacing: "-0.01em",
+                      }}
+                    >
                       {agent?.name || conv.agent_id}
                     </span>
                     <span
-                      className="text-[11px] flex-shrink-0"
-                      style={{ color: "var(--tg-theme-hint-color)" }}
+                      className="mono text-[10px] flex-shrink-0 ml-auto"
+                      style={{
+                        color: "var(--paper-3)",
+                        letterSpacing: "0.02em",
+                      }}
                     >
                       {timeAgo(conv.updated_at)}
                     </span>
                   </div>
                   <p
-                    className="text-xs truncate mt-0.5"
-                    style={{ color: "var(--tg-theme-hint-color)" }}
+                    className="text-xs truncate"
+                    style={{ color: "var(--paper-2)" }}
                   >
                     {conv.title || t("newConversation")}
                   </p>
                 </div>
-                <span style={{ color: "var(--tg-theme-hint-color)" }}>›</span>
               </button>
             );
           })}
@@ -106,11 +123,19 @@ export function Sembang({ onSelect, onGoToTeman }: Props) {
 
   return (
     <div className="flex flex-col flex-1">
-      <div
-        className="px-4 pt-5 pb-3"
-        style={{ background: "var(--tg-theme-bg-color)" }}
-      >
-        <h1 className="text-2xl font-bold">{t("sembangTitle")}</h1>
+      <div className="px-4 pt-6 pb-4" style={{ background: "var(--ink-0)" }}>
+        <h1
+          className="display"
+          style={{
+            color: "var(--paper)",
+            fontSize: "32px",
+            fontWeight: 400,
+            letterSpacing: "-0.02em",
+            lineHeight: 1.1,
+          }}
+        >
+          {t("sembangTitle")}
+        </h1>
       </div>
 
       <div className="flex-1 overflow-y-auto px-4 pb-4">
@@ -120,7 +145,7 @@ export function Sembang({ onSelect, onGoToTeman }: Props) {
               <div
                 key={i}
                 className="h-16 rounded-2xl animate-pulse"
-                style={{ background: "var(--tg-theme-secondary-bg-color)" }}
+                style={{ background: "var(--ink-2)" }}
               />
             ))}
           </div>
@@ -129,31 +154,27 @@ export function Sembang({ onSelect, onGoToTeman }: Props) {
           <div className="text-center py-16 px-6 fade-in">
             <div
               className="w-14 h-14 rounded-2xl flex items-center justify-center mx-auto mb-4"
-              style={{ background: "var(--tg-theme-secondary-bg-color)" }}
+              style={{ background: "var(--ink-2)" }}
             >
               <MessageCircle
-                size={24}
-                strokeWidth={1.8}
-                style={{ color: "var(--tg-theme-hint-color)" }}
+                size={22}
+                strokeWidth={1.6}
+                style={{ color: "var(--paper-3)" }}
               />
             </div>
-            <p className="text-base font-semibold mb-1">
+            <p
+              className="display text-[20px] mb-1.5"
+              style={{ color: "var(--paper)", letterSpacing: "-0.01em" }}
+            >
               {t("sembangEmptyTitle")}
             </p>
             <p
-              className="text-sm mb-5"
-              style={{ color: "var(--tg-theme-hint-color)" }}
+              className="text-sm mb-6 leading-relaxed"
+              style={{ color: "var(--paper-2)" }}
             >
               {t("sembangEmptyHint")}
             </p>
-            <button
-              onClick={onGoToTeman}
-              className="inline-flex items-center gap-2 px-4 py-2.5 rounded-full text-sm font-semibold transition-transform active:scale-95"
-              style={{
-                background: "var(--tg-theme-button-color)",
-                color: "var(--tg-theme-button-text-color)",
-              }}
-            >
+            <button onClick={onGoToTeman} className="btn-terra text-sm">
               {t("sembangEmptyCta")}
             </button>
           </div>

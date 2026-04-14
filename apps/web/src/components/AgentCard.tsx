@@ -1,6 +1,7 @@
 import type { Agent } from "@aman-tg/shared";
 import { getAgentIcon, getAccent, Lock, Star } from "../lib/icons";
 import { t } from "../lib/i18n";
+import { tap } from "../lib/haptics";
 
 interface Props {
   agent: Agent;
@@ -11,12 +12,10 @@ interface Props {
 }
 
 /**
- * Pakar card — the professional service tile.
+ * Pakar card — Tactile Night tile.
  *
- * Layout: icon tile (top-left), name row (with premium/lock badges),
- * description (2 lines), and a pair of meta tags below. The whole card
- * is the tap target; the share affordance lives in the detail page to
- * keep the grid clean.
+ * Fraunces agent name, mono @handle, soft accent glow behind the icon,
+ * gradient card surface. The whole tile is the tap target.
  */
 export function AgentCard({
   agent,
@@ -34,63 +33,82 @@ export function AgentCard({
 
   return (
     <button
-      onClick={() => onSelect(agent)}
-      className="text-left rounded-2xl p-4 transition-transform active:scale-[0.97] relative card-soft"
+      onClick={() => {
+        tap("light");
+        onSelect(agent);
+      }}
+      className="text-left rounded-2xl p-4 transition-transform active:scale-[0.97] relative card-night"
       style={{
-        background: "var(--tg-theme-secondary-bg-color)",
         opacity: locked ? 0.72 : 1,
       }}
     >
       {showJiranPill && (
         <span
-          className="absolute top-2 right-2 text-[10px] font-semibold px-2 py-0.5 rounded-full"
+          className="mono absolute top-2.5 right-2.5 text-[10px] font-semibold px-2 py-0.5 rounded-full"
           style={{
-            background:
-              "color-mix(in srgb, var(--tg-theme-button-color) 85%, transparent)",
-            color: "var(--tg-theme-button-text-color)",
+            background: "var(--sun)",
+            color: "var(--ink-0)",
+            letterSpacing: "0.04em",
           }}
         >
           {t("agentCardJiranPill", { n: jiranMerchantCount })}
         </span>
       )}
 
-      {/* Icon tile */}
+      {/* Accent tile */}
       <div
         className="w-11 h-11 rounded-xl flex items-center justify-center mb-3"
-        style={{ background: accent.bg }}
+        style={{
+          background: accent.bg,
+          boxShadow: `0 6px 22px -12px ${accent.fg}`,
+        }}
       >
         <Icon size={20} strokeWidth={2} style={{ color: accent.fg }} />
       </div>
 
       {/* Name + badges */}
-      <div className="flex items-center gap-1.5 mb-1">
+      <div className="flex items-center gap-1.5 mb-0.5">
         <span
-          className="font-semibold text-sm truncate"
-          style={{ color: "var(--tg-theme-text-color)" }}
+          className="display truncate"
+          style={{
+            color: "var(--paper)",
+            fontSize: "17px",
+            fontWeight: 500,
+            letterSpacing: "-0.01em",
+            lineHeight: 1.15,
+          }}
         >
           {agent.name}
         </span>
         {agent.premium && (
           <Star
-            size={12}
-            fill="#f59e0b"
-            stroke="#f59e0b"
+            size={11}
+            fill="var(--sun)"
+            stroke="var(--sun)"
             className="flex-shrink-0"
           />
         )}
         {locked && (
           <Lock
-            size={12}
+            size={11}
             className="flex-shrink-0"
-            style={{ color: "var(--tg-theme-hint-color)" }}
+            style={{ color: "var(--paper-3)" }}
           />
         )}
       </div>
 
+      {/* Mono handle */}
+      <div
+        className="mono text-[10px] mb-2"
+        style={{ color: "var(--paper-3)", letterSpacing: "0.02em" }}
+      >
+        @{agent.id}
+      </div>
+
       {/* Description */}
       <p
-        className="text-xs leading-relaxed line-clamp-2 mb-2.5"
-        style={{ color: "var(--tg-theme-hint-color)" }}
+        className="text-[12px] leading-relaxed line-clamp-2 mb-2.5"
+        style={{ color: "var(--paper-2)" }}
       >
         {locked ? "Upgrade to Pro to unlock" : agent.description}
       </p>
@@ -101,10 +119,11 @@ export function AgentCard({
           agent.tags.slice(0, 2).map((tag) => (
             <span
               key={tag}
-              className="text-[10px] font-medium px-2 py-0.5 rounded-full"
+              className="mono text-[9px] font-medium px-1.5 py-0.5 rounded-full"
               style={{
-                background: "var(--tg-theme-bg-color)",
-                color: "var(--tg-theme-hint-color)",
+                background: "var(--ink-3)",
+                color: "var(--paper-3)",
+                letterSpacing: "0.02em",
               }}
             >
               {tag}

@@ -89,13 +89,15 @@ export function KedaiCard({ merchant, onTap }: Props) {
   return (
     <button
       onClick={onTap}
-      className="w-full text-left rounded-2xl p-4 transition-transform active:scale-[0.98] flex items-start gap-3 card-soft"
-      style={{ background: "var(--tg-theme-secondary-bg-color)" }}
+      className="w-full text-left rounded-2xl p-4 transition-transform active:scale-[0.98] flex items-start gap-3 card-night"
     >
       {/* Left: icon tile */}
       <div
         className="w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0"
-        style={{ background: accent.bg }}
+        style={{
+          background: accent.bg,
+          boxShadow: `0 6px 22px -12px ${accent.fg}`,
+        }}
       >
         <Icon size={22} strokeWidth={2} style={{ color: accent.fg }} />
       </div>
@@ -105,16 +107,25 @@ export function KedaiCard({ merchant, onTap }: Props) {
         {/* Row 1: Name + type badge */}
         <div className="flex items-center gap-2 mb-1">
           <span
-            className="font-semibold text-sm truncate"
-            style={{ color: "var(--tg-theme-text-color)" }}
+            className="display truncate"
+            style={{
+              color: "var(--paper)",
+              fontSize: "15px",
+              fontWeight: 500,
+              letterSpacing: "-0.01em",
+            }}
           >
             {merchant.name}
           </span>
           <span
-            className="text-[10px] px-2 py-0.5 rounded-full flex-shrink-0 font-semibold tracking-wide"
-            style={{ background: accent.bg, color: accent.fg }}
+            className="mono text-[9px] px-1.5 py-0.5 rounded-full flex-shrink-0 font-semibold"
+            style={{
+              background: accent.bg,
+              color: accent.fg,
+              letterSpacing: "0.06em",
+            }}
           >
-            {badge}
+            {badge.toUpperCase()}
           </span>
         </div>
 
@@ -122,17 +133,23 @@ export function KedaiCard({ merchant, onTap }: Props) {
         <div className="flex items-center gap-2 mb-1">
           {hasPriceRange ? (
             <span
-              className="text-xs font-semibold"
-              style={{ color: "var(--tg-theme-text-color)" }}
+              className="mono text-[11px] font-semibold"
+              style={{ color: "var(--paper)" }}
             >
-              {formatPrice(merchant.price_min!)} – {formatPrice(merchant.price_max!)}
+              {formatPrice(merchant.price_min!)}–{formatPrice(merchant.price_max!)}
             </span>
           ) : (
-            <span className="text-xs" style={{ color: "var(--tg-theme-hint-color)" }}>
+            <span
+              className="text-xs"
+              style={{ color: "var(--paper-3)" }}
+            >
               Harga tiada
             </span>
           )}
-          <span className="text-xs" style={{ color: "var(--tg-theme-hint-color)" }}>
+          <span
+            className="mono text-[11px]"
+            style={{ color: "var(--paper-3)" }}
+          >
             · {merchant.item_count} menu
           </span>
         </div>
@@ -141,18 +158,24 @@ export function KedaiCard({ merchant, onTap }: Props) {
         <div className="flex items-center gap-2 mb-1.5">
           {hoursLabel && (
             <span
-              className="text-xs inline-flex items-center gap-1"
-              style={{ color: "var(--tg-theme-hint-color)" }}
+              className="mono text-[10px] inline-flex items-center gap-1"
+              style={{
+                color: "var(--paper-3)",
+                letterSpacing: "0.02em",
+              }}
             >
               <Clock size={11} strokeWidth={2.2} />
               {hoursLabel}
             </span>
           )}
           <span
-            className="text-[10px] px-2 py-0.5 rounded-full font-semibold flex-shrink-0 tracking-wide"
+            className="mono text-[9px] px-1.5 py-0.5 rounded-full font-semibold flex-shrink-0"
             style={{
-              background: open ? "rgba(34,197,94,0.15)" : "rgba(239,68,68,0.15)",
-              color: open ? "#22c55e" : "#ef4444",
+              background: open
+                ? "color-mix(in srgb, var(--forest) 22%, transparent)"
+                : "color-mix(in srgb, var(--ember) 18%, transparent)",
+              color: open ? "var(--forest)" : "var(--ember)",
+              letterSpacing: "0.08em",
             }}
           >
             {open ? "BUKA" : "TUTUP"}
@@ -165,13 +188,17 @@ export function KedaiCard({ merchant, onTap }: Props) {
             {topItems.map((item) => (
               <span
                 key={item.id}
-                className="text-xs px-2 py-0.5 rounded-full inline-flex items-center gap-1"
+                className="text-[11px] px-2 py-0.5 rounded-full inline-flex items-center gap-1"
                 style={{
-                  background: "var(--tg-theme-bg-color)",
-                  color: "var(--tg-theme-hint-color)",
+                  background: "var(--ink-3)",
+                  color: "var(--paper-2)",
                 }}
               >
-                <Star size={10} fill="currentColor" />
+                <Star
+                  size={9}
+                  fill="var(--sun)"
+                  stroke="var(--sun)"
+                />
                 {item.name}
               </span>
             ))}
@@ -183,7 +210,7 @@ export function KedaiCard({ merchant, onTap }: Props) {
       <ChevronRight
         size={18}
         className="flex-shrink-0 self-center"
-        style={{ color: "var(--tg-theme-hint-color)" }}
+        style={{ color: "var(--paper-3)" }}
       />
     </button>
   );

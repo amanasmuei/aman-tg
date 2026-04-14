@@ -21,28 +21,42 @@ export function BottomNav({ active, onChange }: Props) {
       <button
         key={tab}
         onClick={() => select(tab)}
-        className="flex-1 flex flex-col items-center justify-center gap-0.5 py-2 transition-transform active:scale-95"
+        className="flex-1 flex flex-col items-center justify-center gap-0.5 py-2.5 transition-transform active:scale-95 relative"
         style={{
-          color: isActive
-            ? "var(--tg-theme-text-color)"
-            : "var(--tg-theme-hint-color)",
+          color: isActive ? "var(--paper)" : "var(--paper-3)",
         }}
       >
-        <Icon size={20} strokeWidth={isActive ? 2.3 : 1.8} />
-        <span className="text-[11px] font-semibold leading-none mt-0.5">
+        <Icon size={20} strokeWidth={isActive ? 2.2 : 1.8} />
+        <span
+          className="text-[11px] font-semibold leading-none mt-1"
+          style={{
+            letterSpacing: "0.02em",
+          }}
+        >
           {label}
         </span>
+        {isActive && (
+          <span
+            className="absolute left-1/2 -translate-x-1/2 rounded-full"
+            style={{
+              bottom: "6px",
+              width: "22px",
+              height: "2px",
+              background: "var(--sun)",
+            }}
+            aria-hidden
+          />
+        )}
       </button>
     );
   };
 
   return (
     <nav
-      className="fixed left-0 right-0 bottom-0 z-30 flex border-t bottom-nav-safe"
+      className="fixed left-0 right-0 bottom-0 z-30 flex bottom-nav-safe"
       style={{
-        background: "var(--tg-theme-bg-color)",
-        borderColor:
-          "color-mix(in srgb, var(--tg-theme-text-color) 8%, transparent)",
+        background: "var(--ink-1)",
+        borderTop: "1px solid var(--rule-2)",
       }}
     >
       {item("teman", t("navTeman"), Users)}

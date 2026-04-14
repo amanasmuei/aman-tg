@@ -39,18 +39,19 @@ export function HeaderMenu({
     Icon: LucideIcon,
     onClick: () => void,
     tone: "default" | "danger" = "default",
+    variant: "ui" | "mono" = "ui",
   ) => (
     <button
       onClick={() => {
         onClick();
         onClose();
       }}
-      className="w-full flex items-center gap-3 px-3 py-2.5 text-sm transition-colors rounded-xl"
+      className={`w-full flex items-center gap-3 px-3 py-2.5 text-sm transition-colors rounded-xl hover:opacity-90 ${variant === "mono" ? "mono" : ""}`}
       style={{
-        color: tone === "danger" ? "#f85149" : "var(--tg-theme-text-color)",
+        color: tone === "danger" ? "var(--ember)" : "var(--paper)",
       }}
     >
-      <Icon size={16} strokeWidth={2} />
+      <Icon size={16} strokeWidth={1.9} />
       <span>{label}</span>
     </button>
   );
@@ -61,20 +62,31 @@ export function HeaderMenu({
   return (
     <div
       ref={ref}
-      className="absolute right-0 top-full mt-1 w-56 z-40 fade-in rounded-2xl p-2 card-soft"
-      style={{ background: "var(--tg-theme-secondary-bg-color)" }}
+      className="absolute right-0 top-full mt-2 w-60 z-40 fade-in rounded-2xl p-2"
+      style={{
+        background: "var(--ink-1)",
+        border: "1px solid var(--rule-2)",
+        boxShadow: "0 24px 48px -16px rgba(0,0,0,0.7), 0 4px 12px -4px rgba(0,0,0,0.5)",
+      }}
     >
       <div
-        className="px-3 py-2 text-[11px] uppercase tracking-wider"
-        style={{ color: "var(--tg-theme-hint-color)" }}
+        className="mono px-3 py-2 text-[10px] uppercase"
+        style={{ color: "var(--paper-3)", letterSpacing: "0.22em" }}
       >
-        {planLabel}
+        <span style={{ color: "var(--sun)" }}>◆</span>{" "}
+        <span className="display" style={{ fontSize: "12px", letterSpacing: "normal", textTransform: "none" }}>
+          {planLabel}
+        </span>
         {planExpiresAt && (
-          <span> · {new Date(planExpiresAt).toLocaleDateString()}</span>
+          <span className="mono">
+            {" · "}
+            {new Date(planExpiresAt).toLocaleDateString()}
+          </span>
         )}
       </div>
+      <div className="h-px mx-2 my-1" style={{ background: "var(--rule)" }} />
       {row(t("inviteFriends"), Gift, onInvite)}
-      {row(`${getLocale().toUpperCase()}`, Globe, onToggleLocale)}
+      {row(getLocale().toUpperCase(), Globe, onToggleLocale, "default", "mono")}
       {row(t("resetData"), RotateCcw, onReset, "danger")}
       {row("About", HelpCircle, () => {
         window.open("https://aman.kooleklabs.com", "_blank");
