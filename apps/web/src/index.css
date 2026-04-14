@@ -8,6 +8,17 @@
   --tg-theme-button-color: #238636;
   --tg-theme-button-text-color: #ffffff;
   --tg-theme-secondary-bg-color: #161b22;
+
+  /* Markdown renderer tokens (derive from tg-theme, readable on either side) */
+  --md-rule: color-mix(in srgb, var(--tg-theme-text-color) 14%, transparent);
+  --md-rule-strong: color-mix(in srgb, var(--tg-theme-text-color) 28%, transparent);
+  --md-code-bg: color-mix(in srgb, var(--tg-theme-text-color) 6%, transparent);
+  --md-inline-code-bg: color-mix(in srgb, var(--tg-theme-text-color) 10%, transparent);
+  --md-quote-bg: color-mix(in srgb, var(--tg-theme-button-color) 8%, transparent);
+  --md-table-bg: color-mix(in srgb, var(--tg-theme-text-color) 3%, transparent);
+  --md-table-head-bg: color-mix(in srgb, var(--tg-theme-text-color) 8%, transparent);
+  --md-table-head: color-mix(in srgb, var(--tg-theme-text-color) 65%, transparent);
+  --md-table-stripe: color-mix(in srgb, var(--tg-theme-text-color) 4%, transparent);
 }
 
 body {

@@ -14,6 +14,7 @@ import adminRoute from "./routes/admin.js";
 import referralsRoute from "./routes/referrals.js";
 import merchantsRoute from "./routes/merchants.js";
 import ordersRoute from "./routes/orders.js";
+import tasksRoute from "./routes/tasks.js";
 import { getDb } from "./db.js";
 import { loadRules } from "./guardrails.js";
 import path from "node:path";
@@ -59,6 +60,7 @@ app.route("/api/admin", adminRoute);
 app.route("/api/referrals", referralsRoute);
 app.route("/api/merchants", merchantsRoute);
 app.route("/api/orders", ordersRoute);
+app.route("/api/tasks", tasksRoute);
 
 // Health check
 app.get("/health", (c) => c.json({ status: "ok", version: "0.2.0" }));

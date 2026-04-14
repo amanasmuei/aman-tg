@@ -517,11 +517,18 @@ function tokenize(expr: string): string[] {
 // ── Todo tool handlers ─────────────────────────────
 
 function formatTodo(t: DbTodo): string {
-  const status = t.status === "done" ? "✅" : "⬜";
-  const priority = t.priority === "high" ? "🔴" : t.priority === "medium" ? "🟡" : "🟢";
-  const due = t.due_date ? ` (due: ${t.due_date})` : "";
-  const desc = t.description ? `\n   ${t.description}` : "";
-  return `${status} ${priority} **${t.title}**${due}${desc}\n   ID: \`${t.id.slice(0, 8)}\``;
+  // Emit the exact GFM task-list line the Mini App renderer expects, on a
+  // single line so consecutive tasks form one tappable list. The trailing
+  // `[#xxxxxxxx]` suffix is what makes the checkbox interactive.
+  const checkbox = t.status === "done" ? "[x]" : "[ ]";
+  const priority =
+    t.priority === "high" ? "[High]" : t.priority === "medium" ? "[Medium]" : "[Low]";
+  const due = t.due_date ? ` — due ${t.due_date}` : "";
+  const desc = t.description
+    ? ` — ${t.description.replace(/\s+/g, " ").trim().slice(0, 80)}`
+    : "";
+  const id = `[#${t.id.slice(0, 8)}]`;
+  return `- ${checkbox} ${t.title} ${priority}${due}${desc} ${id}`;
 }
 
 function handleAddTask(input: Record<string, unknown>, ctx?: ToolContext): ToolResult {

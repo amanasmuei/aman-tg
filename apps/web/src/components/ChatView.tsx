@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import type { Agent, ChatMessage } from "@aman-tg/shared";
 import { Markdown } from "./Markdown";
 import { t, getLanguageDirective } from "../lib/i18n";
@@ -49,6 +49,44 @@ export function ChatView({ agent, onBack, conversationId, initialMerchantId, ini
   const [showScrollBtn, setShowScrollBtn] = useState(false);
   const chatContainerRef = useRef<HTMLDivElement>(null);
   const merchantAutoSentRef = useRef(false);
+
+  // Tap-to-toggle task state — keyed by short task id (first 8 chars).
+  // Survives the chat session; on remount, falls back to whatever the
+  // assistant message text says.
+  const [taskOverrides, setTaskOverrides] = useState<Record<string, boolean>>({});
+
+  const handleTaskToggle = useCallback(
+    async (taskId: string, done: boolean) => {
+      const tg = window.Telegram?.WebApp;
+      const telegramId = tg?.initDataUnsafe?.user?.id;
+      if (!telegramId) return;
+
+      const previous = taskOverrides[taskId];
+      // Optimistic flip
+      setTaskOverrides((m) => ({ ...m, [taskId]: done }));
+      try {
+        const res = await fetch(`/api/tasks/${taskId}/status`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ telegramId, status: done ? "done" : "pending" }),
+        });
+        if (!res.ok) throw new Error(`status ${res.status}`);
+        // Light haptic on success
+        tg?.HapticFeedback?.notificationOccurred?.("success");
+      } catch (err) {
+        console.error("[TASK_TOGGLE] failed", err);
+        // Roll back
+        setTaskOverrides((m) => {
+          const next = { ...m };
+          if (previous === undefined) delete next[taskId];
+          else next[taskId] = previous;
+          return next;
+        });
+        tg?.HapticFeedback?.notificationOccurred?.("error");
+      }
+    },
+    [taskOverrides],
+  );
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -424,7 +462,11 @@ export function ChatView({ agent, onBack, conversationId, initialMerchantId, ini
                  }}>
               {msg.content ? (
                 msg.role === "assistant"
-                  ? <Markdown content={msg.content} />
+                  ? <Markdown
+                      content={msg.content}
+                      onTaskToggle={handleTaskToggle}
+                      taskOverrides={taskOverrides}
+                    />
                   : <span className="whitespace-pre-wrap">{msg.content}</span>
               ) : (
                 loading ? (

@@ -216,6 +216,19 @@ app.post("/", async (c) => {
 - delete_task: Remove a task
 When the user mentions something they need to do, remember, or track — proactively offer to save it as a task. If the user asks what they need to do, use list_tasks first. Tasks persist across sessions and all agents.`;
 
+  // Shared output formatting protocol — renders beautifully in the Mini App
+  systemPrompt += `\n\nFORMATTING (strict):
+- GFM only. Use tables, task lists (\`- [ ]\` / \`- [x]\`), blockquotes, fenced code, links — all render richly.
+- Paragraphs ≤3 sentences; blank line between blocks.
+- Tabular data → real GFM table (header row + \`|---|\` separator). Never simulate with pipes in prose.
+- Status / priority → bracket tokens: [High] [Medium] [Low] [Done] [Pending] [Open] [Blocked] [Urgent]. The UI chips them.
+- Persisted tasks (anything from list_tasks / add_task / complete_task) → task-list syntax with the task ID suffix:
+    \`- [ ] Title [Priority] [#xxxxxxxx]\` or \`- [x] Title [Priority] [#xxxxxxxx]\`
+  The \`[#xxxxxxxx]\` suffix is the first 8 chars of the task ID. Without it the user cannot tap-toggle.
+- Notes / warnings → \`> blockquote\`, not emoji walls. One emoji max per header.
+- \`---\` = deliberate section break only.
+- Structure beats prose.`;
+
   // Inject guardrails into system prompt
   const guardrails = getGuardrailsPrompt();
   if (guardrails) {
