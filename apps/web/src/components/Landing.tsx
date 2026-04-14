@@ -568,7 +568,7 @@ export function Landing() {
         <div className="max-w-3xl mx-auto px-6 lg:px-10 text-center">
           <div className="ornament justify-center mb-6">
             <span>◊</span>
-            <span className="mono text-[11px] uppercase tracking-[0.3em]">Dibuat di Kuala Lumpur</span>
+            <span className="mono text-[11px] uppercase tracking-[0.3em]">Dibuat di Malaysia</span>
             <span>◊</span>
           </div>
           <h2
