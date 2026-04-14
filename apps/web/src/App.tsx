@@ -12,6 +12,7 @@ import { ResumeStrip } from "./components/ResumeStrip";
 import { KedaiCard } from "./components/KedaiCard";
 import { detectLocale, t } from "./lib/i18n";
 import { useTelegramId } from "./lib/useTelegramId";
+import { useTelegramBackButton } from "./lib/useTelegramBackButton";
 import { tap } from "./lib/haptics";
 import {
   filterMerchantsByQuery,
@@ -45,6 +46,21 @@ type Stack =
 export function App() {
   detectLocale();
   const telegramId = useTelegramId();
+
+  // Telegram Mini App chrome: signal ready, expand to full height, match
+  // our palette. Safe to call unconditionally — no-ops outside Telegram.
+  useEffect(() => {
+    const tg = window.Telegram?.WebApp;
+    if (!tg) return;
+    try {
+      tg.ready();
+      tg.expand();
+      tg.setHeaderColor?.("#0d0b08");
+      tg.setBackgroundColor?.("#0d0b08");
+    } catch {
+      /* older clients may throw on unsupported methods */
+    }
+  }, []);
 
   // Orthogonal routing: persistent bottom-nav tab + a push/pop stack on top.
   const [tab, setTab] = useState<Tab>("teman");
