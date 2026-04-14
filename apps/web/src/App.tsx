@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { AgentGrid } from "./components/AgentGrid";
 import { ChatView } from "./components/ChatView";
-import { ConversationList } from "./components/ConversationList";
+import { Sembang } from "./components/Sembang";
 import { AgentDetail } from "./components/AgentDetail";
 import { Header } from "./components/Header";
 import { Landing } from "./components/Landing";
@@ -339,9 +339,9 @@ export function App() {
       )}
 
       {tab === "sembang" && (
-        <ConversationList
+        <Sembang
           onSelect={handleSelectConversation}
-          onBack={() => setTab("teman")}
+          onGoToTeman={() => setTab("teman")}
         />
       )}
 
