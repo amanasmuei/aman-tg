@@ -4,6 +4,7 @@ import { Markdown } from "./Markdown";
 import { t, getLanguageDirective } from "../lib/i18n";
 import { getAgentIcon, getAccent, Paperclip, ArrowUp, ArrowDown, Check, Copy } from "../lib/icons";
 import { tap } from "../lib/haptics";
+import { useTelegramBackButton } from "../lib/useTelegramBackButton";
 
 const QUICK_PROMPTS: Record<string, string[]> = {
   coding: ["Fix a bug", "Write a function", "Explain this code"],
@@ -402,6 +403,8 @@ export function ChatView({ agent, onBack, conversationId, initialMerchantId, ini
   const AgentIcon = getAgentIcon(agent.id);
   const accent = getAccent(agent.category);
   const canSend = (input.trim() || attachment) && !loading;
+
+  useTelegramBackButton(onBack);
 
   return (
     <div

@@ -3,6 +3,7 @@ import { JiranMerchantSection } from "./JiranMerchantSection";
 import { getAgentIcon, getAccent, ChevronRight, Star, Lock } from "../lib/icons";
 import { t } from "../lib/i18n";
 import { tap } from "../lib/haptics";
+import { useTelegramBackButton } from "../lib/useTelegramBackButton";
 
 const EXAMPLE_PROMPTS: Record<string, string[]> = {
   coding: ["Fix this React hook", "Write a REST API in Node.js", "Explain async/await"],
@@ -46,6 +47,8 @@ export function AgentDetail({
     ];
   const Icon = getAgentIcon(agent.id);
   const accent = getAccent(agent.category);
+
+  useTelegramBackButton(onBack);
 
   return (
     <div
