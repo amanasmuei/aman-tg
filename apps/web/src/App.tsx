@@ -159,7 +159,7 @@ export function App() {
     >
       {tab === "teman" && (
         <>
-          <Header />
+          <Header onInvite={handleInvite} planExpiresAt={planExpiresAt} />
 
           <SearchBar
             value={search}

@@ -444,6 +444,19 @@ export function getLocale(): Locale {
   return currentLocale;
 }
 
+/** Force the locale directly (used by HeaderMenu's language toggle). */
+export function setLocale(l: Locale): void {
+  currentLocale = l;
+}
+
+/** Cycle en → ms → id → en. Returns the new locale. */
+export function cycleLocale(): Locale {
+  const order: Locale[] = ["en", "ms", "id"];
+  const next = order[(order.indexOf(currentLocale) + 1) % order.length];
+  setLocale(next);
+  return next;
+}
+
 /** Get a time-of-day greeting in the current locale (no name appended). */
 export function greetingByHour(hour: number = new Date().getHours()): string {
   if (hour < 12) return t("greetingMorning");
