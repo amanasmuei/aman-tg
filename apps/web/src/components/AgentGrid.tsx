@@ -68,27 +68,21 @@ export function AgentGrid({
             <button
               key={cat.id}
               onClick={() => handleCategoryChange(cat.id)}
-              className="flex-shrink-0 px-3.5 py-1.5 rounded-full text-sm font-medium transition-all inline-flex items-center gap-1.5"
+              className="flex-shrink-0 px-3.5 py-1.5 rounded-full text-sm font-medium transition-all duration-200 inline-flex items-center gap-1.5"
               style={{
-                background: active
-                  ? "var(--tg-theme-button-color)"
-                  : "var(--tg-theme-secondary-bg-color)",
-                color: active
-                  ? "var(--tg-theme-button-text-color)"
-                  : "var(--tg-theme-text-color)",
+                background: active ? "var(--terra)" : "var(--ink-2)",
+                color: active ? "var(--ink-0)" : "var(--paper-2)",
+                border: `1px solid ${active ? "var(--terra)" : "var(--rule)"}`,
               }}
             >
               {Icon && <Icon size={14} strokeWidth={2.2} />}
               <span>{cat.label}</span>
               <span
-                className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full min-w-[18px] text-center"
+                className="mono text-[10px] font-semibold px-1.5 py-0.5 rounded-full min-w-[18px] text-center"
                 style={{
-                  background: active
-                    ? "rgba(255,255,255,0.22)"
-                    : "var(--tg-theme-bg-color)",
-                  color: active
-                    ? "var(--tg-theme-button-text-color)"
-                    : "var(--tg-theme-hint-color)",
+                  background: active ? "rgba(13,11,8,0.25)" : "var(--ink-3)",
+                  color: active ? "var(--ink-0)" : "var(--paper-3)",
+                  letterSpacing: "0.02em",
                 }}
               >
                 {count}
@@ -103,24 +97,21 @@ export function AgentGrid({
         <div className="text-center py-12 px-6 fade-in">
           <div
             className="w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-4"
-            style={{ background: "var(--tg-theme-secondary-bg-color)" }}
+            style={{ background: "var(--ink-2)" }}
           >
             <Briefcase
               size={28}
-              strokeWidth={1.8}
-              style={{ color: "var(--tg-theme-hint-color)" }}
+              strokeWidth={1.6}
+              style={{ color: "var(--paper-3)" }}
             />
           </div>
           <p
-            className="text-base font-semibold mb-1"
-            style={{ color: "var(--tg-theme-text-color)" }}
+            className="display text-lg mb-1"
+            style={{ color: "var(--paper)" }}
           >
             {isSearching ? t("noSearchResults") : "—"}
           </p>
-          <p
-            className="text-sm"
-            style={{ color: "var(--tg-theme-hint-color)" }}
-          >
+          <p className="text-sm" style={{ color: "var(--paper-3)" }}>
             {isSearching ? t("noSearchHint") : ""}
           </p>
         </div>
