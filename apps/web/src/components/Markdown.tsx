@@ -221,8 +221,9 @@ function parseAlign(sep: string): Align[] {
 function renderBlock(block: Block, key: number, ctx: RenderCtx = {}): React.ReactNode {
   switch (block.kind) {
     case "heading": {
-      const sizes = ["1.2rem", "1.05rem", "0.98rem", "0.9rem"];
-      const weight = block.level <= 2 ? 600 : 500;
+      const sizes = ["1.35rem", "1.15rem", "1rem", "0.95rem"];
+      const weight = block.level <= 2 ? 500 : 500;
+      const useDisplay = block.level <= 3;
       return (
         <div
           key={key}
@@ -230,9 +231,13 @@ function renderBlock(block: Block, key: number, ctx: RenderCtx = {}): React.Reac
           style={{
             fontSize: sizes[block.level - 1] || "0.9rem",
             fontWeight: weight,
-            margin: "0.8em 0 0.35em",
-            letterSpacing: "-0.005em",
+            margin: "0.9em 0 0.35em",
+            letterSpacing: "-0.015em",
+            lineHeight: 1.2,
             color: "var(--tg-theme-text-color)",
+            fontFamily: useDisplay
+              ? '"Fraunces", ui-serif, Georgia, serif'
+              : undefined,
           }}
         >
           {renderInline(block.text)}
@@ -326,14 +331,15 @@ function renderBlock(block: Block, key: number, ctx: RenderCtx = {}): React.Reac
           className="md-quote"
           style={{
             margin: "0.6em 0",
-            padding: "0.55em 0.85em",
-            borderLeft: "3px solid var(--tg-theme-button-color, #2f4a3a)",
+            padding: "0.6em 0.9em",
+            borderLeft: "3px solid var(--terra, var(--tg-theme-button-color))",
             background: "var(--md-quote-bg)",
-            borderRadius: "0 8px 8px 0",
+            borderRadius: "0 10px 10px 0",
             fontStyle: "italic",
+            fontFamily: '"Fraunces", ui-serif, Georgia, serif',
             color: "var(--tg-theme-text-color)",
-            opacity: 0.92,
-            lineHeight: 1.55,
+            opacity: 0.95,
+            lineHeight: 1.6,
           }}
         >
           {block.text.split("\n").map((line, idx) => (
@@ -713,10 +719,12 @@ function renderInline(text: string): React.ReactNode[] {
           target="_blank"
           rel="noopener noreferrer"
           style={{
-            color: "var(--tg-theme-link-color, #2f4a3a)",
+            color: "var(--terra, var(--tg-theme-link-color))",
             textDecoration: "underline",
-            textUnderlineOffset: 2,
+            textUnderlineOffset: 3,
             textDecorationThickness: "1px",
+            textDecorationColor:
+              "color-mix(in srgb, var(--terra) 45%, transparent)",
           }}
         >
           {m[4]}
