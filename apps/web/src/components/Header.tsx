@@ -117,21 +117,31 @@ export function Header({
       }}
     >
       {/* Row 1: brand + plan + menu */}
-      <div className="flex items-center gap-2 mb-1">
-        <div className="text-2xl font-bold tracking-tight leading-none">aman</div>
+      <div className="flex items-center gap-2 mb-1.5">
+        <div
+          className="display text-[28px] leading-none"
+          style={{ color: "var(--paper)", fontWeight: 500 }}
+        >
+          aman<span style={{ color: "var(--terra)" }}>.</span>
+        </div>
         {usage?.plan === "pro" ? (
           <div
-            className="px-2 py-0.5 rounded-full text-[10px] font-semibold tracking-wide"
-            style={{ background: "#f59e0b", color: "#000" }}
+            className="mono px-2 py-0.5 rounded-full text-[10px] font-semibold"
+            style={{
+              background: "var(--sun)",
+              color: "var(--ink-0)",
+              letterSpacing: "0.12em",
+            }}
           >
             PRO
           </div>
         ) : (
           <div
-            className="px-2 py-0.5 rounded-full text-[10px] font-semibold tracking-wide"
+            className="mono px-2 py-0.5 rounded-full text-[10px] font-semibold"
             style={{
-              background: "var(--tg-theme-secondary-bg-color)",
-              color: "var(--tg-theme-hint-color)",
+              background: "var(--ink-2)",
+              color: "var(--paper-3)",
+              letterSpacing: "0.12em",
             }}
           >
             FREE
@@ -145,15 +155,15 @@ export function Header({
         <div className="relative">
           <button
             onClick={() => setMenuOpen((o) => !o)}
-            className="w-9 h-9 rounded-full flex items-center justify-center transition-opacity active:opacity-60"
-            style={{ background: "var(--tg-theme-secondary-bg-color)" }}
+            className="w-9 h-9 rounded-full flex items-center justify-center transition-transform active:scale-95"
+            style={{
+              background: "var(--ink-2)",
+              border: "1px solid var(--rule)",
+            }}
             aria-label={t("menu")}
             disabled={resetting}
           >
-            <MoreHorizontal
-              size={18}
-              style={{ color: "var(--tg-theme-hint-color)" }}
-            />
+            <MoreHorizontal size={18} style={{ color: "var(--paper-2)" }} />
           </button>
           {menuOpen && (
             <HeaderMenu
@@ -174,7 +184,7 @@ export function Header({
       {/* Row 2: greeting */}
       <p
         className="text-sm leading-snug"
-        style={{ color: "var(--tg-theme-hint-color)" }}
+        style={{ color: "var(--paper-2)" }}
       >
         {greetingLine}
       </p>
@@ -183,20 +193,23 @@ export function Header({
       {usage && usage.plan === "free" && usage.messagesLimit > 0 && (
         <div className="mt-3 flex items-center gap-2">
           <div
-            className="flex-1 h-1.5 rounded-full overflow-hidden"
-            style={{ background: "var(--tg-theme-secondary-bg-color)" }}
+            className="flex-1 h-1 rounded-full overflow-hidden"
+            style={{ background: "var(--ink-2)" }}
           >
             <div
-              className="h-full rounded-full transition-all"
+              className="h-full rounded-full transition-all duration-500"
               style={{
                 width: `${Math.min(100, (usage.messagesUsed / usage.messagesLimit) * 100)}%`,
-                background: isLow ? "#ef4444" : "var(--tg-theme-button-color)",
+                background: isLow ? "var(--ember)" : "var(--terra)",
               }}
             />
           </div>
           <span
-            className="text-[11px] flex-shrink-0 font-medium"
-            style={{ color: isLow ? "#ef4444" : "var(--tg-theme-hint-color)" }}
+            className="mono text-[10px] flex-shrink-0 font-medium"
+            style={{
+              color: isLow ? "var(--ember)" : "var(--paper-3)",
+              letterSpacing: "0.04em",
+            }}
           >
             {usage.messagesUsed}/{usage.messagesLimit} {t("messages")}
           </span>
