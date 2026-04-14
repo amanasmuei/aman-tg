@@ -139,7 +139,7 @@ export function App() {
     });
   };
 
-  if (!window.Telegram?.WebApp?.initData) {
+  if (!window.Telegram?.WebApp?.initDataUnsafe?.user?.id) {
     return <Landing />;
   }
 
