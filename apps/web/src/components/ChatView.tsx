@@ -2,6 +2,8 @@ import { useState, useRef, useEffect, useCallback } from "react";
 import type { Agent, ChatMessage } from "@aman-tg/shared";
 import { Markdown } from "./Markdown";
 import { t, getLanguageDirective } from "../lib/i18n";
+import { getAgentIcon, getAccent, Paperclip, ArrowUp, ArrowDown, Check, Copy } from "../lib/icons";
+import { tap } from "../lib/haptics";
 
 const QUICK_PROMPTS: Record<string, string[]> = {
   coding: ["Fix a bug", "Write a function", "Explain this code"],
@@ -397,48 +399,136 @@ export function ChatView({ agent, onBack, conversationId, initialMerchantId, ini
     }
   };
 
+  const AgentIcon = getAgentIcon(agent.id);
+  const accent = getAccent(agent.category);
+  const canSend = (input.trim() || attachment) && !loading;
+
   return (
-    <div className="flex flex-col h-screen stack-push">
+    <div
+      className="flex flex-col h-screen stack-push"
+      style={{ background: "var(--ink-0)" }}
+    >
       {/* Header */}
-      <div className="flex items-center gap-3 px-4 py-3 border-b"
-           style={{ borderColor: "var(--tg-theme-secondary-bg-color)", background: "var(--tg-theme-bg-color)" }}>
-        <button onClick={onBack} className="text-lg p-1">←</button>
-        <span className="text-xl">{agent.icon}</span>
-        <div className="flex-1">
-          <div className="font-semibold text-sm">{agent.name}</div>
-          <div className="text-xs" style={{ color: "var(--tg-theme-hint-color)" }}>{agent.personality}</div>
+      <div
+        className="flex items-center gap-3 px-4 py-3"
+        style={{ borderBottom: "1px solid var(--rule)" }}
+      >
+        <button
+          onClick={() => {
+            tap("light");
+            onBack();
+          }}
+          className="w-9 h-9 rounded-full flex items-center justify-center transition-transform active:scale-95"
+          style={{
+            background: "var(--ink-2)",
+            border: "1px solid var(--rule)",
+            color: "var(--paper)",
+          }}
+          aria-label="Back"
+        >
+          ←
+        </button>
+        <div
+          className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0"
+          style={{
+            background: accent.bg,
+            boxShadow: `0 4px 16px -8px ${accent.fg}`,
+          }}
+        >
+          <AgentIcon size={16} strokeWidth={2} style={{ color: accent.fg }} />
+        </div>
+        <div className="flex-1 min-w-0">
+          <div
+            className="display truncate"
+            style={{
+              color: "var(--paper)",
+              fontSize: "15px",
+              fontWeight: 500,
+              letterSpacing: "-0.01em",
+            }}
+          >
+            {agent.name}
+          </div>
+          <div
+            className="mono text-[10px] truncate"
+            style={{ color: "var(--paper-3)", letterSpacing: "0.02em" }}
+          >
+            @{agent.id}
+          </div>
         </div>
         <button
           onClick={() => {
+            tap("light");
             setMessages([]);
             setIsNewChat(true);
           }}
-          className="text-xs px-3 py-1.5 rounded-full"
-          style={{ background: "var(--tg-theme-secondary-bg-color)", color: "var(--tg-theme-hint-color)" }}
+          className="mono text-[10px] px-3 py-1.5 rounded-full transition-transform active:scale-95"
+          style={{
+            background: "var(--ink-2)",
+            color: "var(--paper-2)",
+            border: "1px solid var(--rule)",
+            letterSpacing: "0.06em",
+          }}
         >
           {t("newChat")}
         </button>
       </div>
 
       {/* Messages */}
-      <div ref={chatContainerRef} onScroll={handleScroll} className="flex-1 overflow-y-auto px-4 py-4 space-y-3 relative">
+      <div
+        ref={chatContainerRef}
+        onScroll={handleScroll}
+        className="flex-1 overflow-y-auto px-4 py-4 space-y-3 relative"
+      >
         {messages.length === 0 && (
-          <div className="text-center py-12">
-            <div className="text-4xl mb-3">{agent.icon}</div>
-            <div className="font-semibold mb-1">{agent.name}</div>
-            <p className="text-sm" style={{ color: "var(--tg-theme-hint-color)" }}>
+          <div className="text-center py-10 px-4 fade-in">
+            <div
+              className="w-14 h-14 rounded-2xl flex items-center justify-center mx-auto mb-4"
+              style={{
+                background: accent.bg,
+                boxShadow: `0 12px 32px -14px ${accent.fg}`,
+              }}
+            >
+              <AgentIcon size={26} strokeWidth={2} style={{ color: accent.fg }} />
+            </div>
+            <div
+              className="display mb-1"
+              style={{
+                color: "var(--paper)",
+                fontSize: "22px",
+                fontWeight: 500,
+                letterSpacing: "-0.01em",
+              }}
+            >
+              {agent.name}
+            </div>
+            <p
+              className="text-sm leading-relaxed max-w-xs mx-auto"
+              style={{ color: "var(--paper-2)" }}
+            >
               {agent.description}
             </p>
-            <p className="text-xs mt-3 mb-4" style={{ color: "var(--tg-theme-hint-color)" }}>
+            <p
+              className="mono text-[10px] mt-4 mb-4"
+              style={{ color: "var(--paper-3)", letterSpacing: "0.08em" }}
+            >
               {t("sendOrAttach")}
             </p>
             <div className="flex flex-wrap gap-2 justify-center">
               {(QUICK_PROMPTS[agent.id] || QUICK_PROMPTS.default).map((prompt) => (
                 <button
                   key={prompt}
-                  onClick={() => { setInput(prompt); inputRef.current?.focus(); }}
+                  onClick={() => {
+                    tap("light");
+                    setInput(prompt);
+                    inputRef.current?.focus();
+                  }}
                   className="px-3 py-1.5 rounded-full text-xs transition-transform active:scale-95"
-                  style={{ background: "var(--tg-theme-secondary-bg-color)", color: "var(--tg-theme-hint-color)" }}
+                  style={{
+                    background: "var(--ink-2)",
+                    color: "var(--paper-2)",
+                    border: "1px solid var(--rule)",
+                  }}
                 >
                   {prompt}
                 </button>
@@ -446,67 +536,84 @@ export function ChatView({ agent, onBack, conversationId, initialMerchantId, ini
             </div>
           </div>
         )}
-        {messages.map((msg) => (
-          <div key={msg.id}
-               className={`flex message-appear ${msg.role === "user" ? "justify-end" : "justify-start"}`}>
-            <div className="max-w-[80%] rounded-2xl px-4 py-2.5 text-sm leading-relaxed"
-                 style={{
-                   background: msg.role === "user"
-                     ? "var(--tg-theme-button-color)"
-                     : "var(--tg-theme-secondary-bg-color)",
-                   color: msg.role === "user"
-                     ? "var(--tg-theme-button-text-color)"
-                     : "var(--tg-theme-text-color)",
-                   borderBottomRightRadius: msg.role === "user" ? "4px" : undefined,
-                   borderBottomLeftRadius: msg.role === "assistant" ? "4px" : undefined,
-                 }}>
-              {msg.content ? (
-                msg.role === "assistant"
-                  ? <Markdown
+        {messages.map((msg) => {
+          const isUser = msg.role === "user";
+          return (
+            <div
+              key={msg.id}
+              className={`flex message-appear ${isUser ? "justify-end" : "justify-start"}`}
+            >
+              <div
+                className="max-w-[82%] rounded-2xl px-4 py-2.5 text-sm leading-relaxed"
+                style={{
+                  background: isUser ? "var(--terra)" : "var(--ink-2)",
+                  color: isUser ? "var(--ink-0)" : "var(--paper)",
+                  border: isUser ? "none" : "1px solid var(--rule)",
+                  borderBottomRightRadius: isUser ? "6px" : undefined,
+                  borderBottomLeftRadius: !isUser ? "6px" : undefined,
+                  boxShadow: isUser
+                    ? "0 6px 18px -10px rgba(199,122,82,0.5)"
+                    : "none",
+                }}
+              >
+                {msg.content ? (
+                  isUser ? (
+                    <span className="whitespace-pre-wrap">{msg.content}</span>
+                  ) : (
+                    <Markdown
                       content={msg.content}
                       onTaskToggle={handleTaskToggle}
                       taskOverrides={taskOverrides}
                     />
-                  : <span className="whitespace-pre-wrap">{msg.content}</span>
-              ) : (
-                loading ? (
-                  <span className="typing-dots">
-                    <span>●</span><span>●</span><span>●</span>
+                  )
+                ) : loading ? (
+                  <span className="typing-dots inline-flex gap-0.5">
+                    <span style={{ color: "var(--paper-2)" }}>●</span>
+                    <span style={{ color: "var(--paper-2)" }}>●</span>
+                    <span style={{ color: "var(--paper-2)" }}>●</span>
                   </span>
-                ) : null
-              )}
-              {msg.content && (
-                <div className="flex items-center justify-end gap-2 mt-1">
-                  {msg.role === "assistant" && (
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        navigator.clipboard.writeText(msg.content);
-                        const btn = e.currentTarget;
-                        btn.textContent = "✓";
-                        setTimeout(() => { btn.textContent = "Copy"; }, 1500);
+                ) : null}
+                {msg.content && (
+                  <div className="flex items-center justify-end gap-2 mt-1.5">
+                    {!isUser && (
+                      <CopyButton text={msg.content} />
+                    )}
+                    <span
+                      className="mono text-[9px]"
+                      style={{
+                        color: isUser
+                          ? "rgba(13,11,8,0.55)"
+                          : "var(--paper-3)",
+                        letterSpacing: "0.04em",
                       }}
-                      className="px-1.5 py-0.5 rounded"
-                      style={{ fontSize: "0.6rem", opacity: 0.4, background: "rgba(0,0,0,0.2)" }}
                     >
-                      Copy
-                    </button>
-                  )}
-                  <span style={{ fontSize: "0.6rem", opacity: 0.5 }}>
-                    {new Date(msg.timestamp).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
-                  </span>
-                </div>
-              )}
+                      {new Date(msg.timestamp).toLocaleTimeString([], {
+                        hour: "2-digit",
+                        minute: "2-digit",
+                      })}
+                    </span>
+                  </div>
+                )}
+              </div>
             </div>
-          </div>
-        ))}
+          );
+        })}
         {showScrollBtn && (
           <button
-            onClick={() => messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })}
-            className="fixed bottom-24 right-4 w-8 h-8 rounded-full flex items-center justify-center text-sm shadow-lg z-10"
-            style={{ background: "var(--tg-theme-button-color)", color: "var(--tg-theme-button-text-color)" }}
+            onClick={() => {
+              tap("light");
+              messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+            }}
+            className="fixed bottom-24 right-4 w-9 h-9 rounded-full flex items-center justify-center z-10 transition-transform active:scale-95"
+            style={{
+              background: "var(--ink-2)",
+              color: "var(--paper)",
+              border: "1px solid var(--rule-2)",
+              boxShadow: "0 8px 20px -6px rgba(0,0,0,0.6)",
+            }}
+            aria-label="Scroll to bottom"
           >
-            ↓
+            <ArrowDown size={16} strokeWidth={2.2} />
           </button>
         )}
         <div ref={messagesEndRef} />
@@ -514,38 +621,80 @@ export function ChatView({ agent, onBack, conversationId, initialMerchantId, ini
 
       {/* Attachment preview */}
       {attachment && (
-        <div className="px-4 py-2 border-t flex items-center gap-3"
-             style={{ borderColor: "var(--tg-theme-secondary-bg-color)", background: "var(--tg-theme-bg-color)" }}>
+        <div
+          className="px-4 py-2.5 flex items-center gap-3"
+          style={{
+            borderTop: "1px solid var(--rule)",
+            background: "var(--ink-1)",
+          }}
+        >
           {attachment.preview ? (
-            <img src={attachment.preview} alt="Preview" className="w-12 h-12 rounded-lg object-cover" />
+            <img
+              src={attachment.preview}
+              alt="Preview"
+              className="w-12 h-12 rounded-lg object-cover"
+              style={{ border: "1px solid var(--rule-2)" }}
+            />
           ) : (
-            <div className="w-12 h-12 rounded-lg flex items-center justify-center text-lg"
-                 style={{ background: "var(--tg-theme-secondary-bg-color)" }}>
-              📎
+            <div
+              className="w-12 h-12 rounded-lg flex items-center justify-center"
+              style={{ background: "var(--ink-2)" }}
+            >
+              <Paperclip size={18} style={{ color: "var(--paper-2)" }} />
             </div>
           )}
           <div className="flex-1 min-w-0">
-            <div className="text-sm font-medium truncate">{attachment.name}</div>
-            <div className="text-xs" style={{ color: "var(--tg-theme-hint-color)" }}>
-              {attachment.type === "image" ? t("imageAttached") : t("fileAttached")}
+            <div
+              className="text-sm font-medium truncate"
+              style={{ color: "var(--paper)" }}
+            >
+              {attachment.name}
+            </div>
+            <div
+              className="mono text-[10px]"
+              style={{ color: "var(--paper-3)", letterSpacing: "0.04em" }}
+            >
+              {attachment.type === "image"
+                ? t("imageAttached")
+                : t("fileAttached")}
             </div>
           </div>
-          <button onClick={removeAttachment} className="text-lg p-1 opacity-60">✕</button>
+          <button
+            onClick={removeAttachment}
+            className="w-7 h-7 rounded-full flex items-center justify-center transition-transform active:scale-90"
+            style={{
+              background: "var(--ink-3)",
+              color: "var(--paper-2)",
+            }}
+            aria-label="Remove attachment"
+          >
+            ✕
+          </button>
         </div>
       )}
 
       {/* Input */}
-      <div className="px-4 py-3 border-t"
-           style={{ borderColor: "var(--tg-theme-secondary-bg-color)", background: "var(--tg-theme-bg-color)" }}>
-        <div className="flex gap-2 items-center">
+      <div
+        className="px-3 py-3"
+        style={{
+          borderTop: "1px solid var(--rule)",
+          background: "var(--ink-0)",
+        }}
+      >
+        <div className="flex gap-2 items-end">
           {/* Attachment button */}
           <button
             onClick={() => fileInputRef.current?.click()}
             disabled={loading}
-            className="rounded-full w-10 h-10 flex items-center justify-center text-lg transition-opacity disabled:opacity-30 flex-shrink-0"
-            style={{ background: "var(--tg-theme-secondary-bg-color)" }}
+            className="rounded-full w-10 h-10 flex items-center justify-center transition-all disabled:opacity-30 flex-shrink-0 active:scale-95"
+            style={{
+              background: "var(--ink-2)",
+              color: "var(--paper-2)",
+              border: "1px solid var(--rule)",
+            }}
+            aria-label="Attach file"
           >
-            📎
+            <Paperclip size={18} strokeWidth={2} />
           </button>
           <input
             ref={fileInputRef}
@@ -561,9 +710,7 @@ export function ChatView({ agent, onBack, conversationId, initialMerchantId, ini
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={(e) => {
               if (e.key !== "Enter" || e.nativeEvent.isComposing) return;
-              // Touch devices: Enter always = newline (native textarea behavior).
               if (isTouch) return;
-              // Desktop: Shift+Enter = newline, plain Enter = send.
               if (e.shiftKey) return;
               e.preventDefault();
               sendMessage();
@@ -571,25 +718,73 @@ export function ChatView({ agent, onBack, conversationId, initialMerchantId, ini
             placeholder={attachment ? t("addCaption") : t("typeMessage")}
             className="flex-1 rounded-3xl px-4 py-2.5 text-sm outline-none resize-none leading-5"
             style={{
-              background: "var(--tg-theme-secondary-bg-color)",
-              color: "var(--tg-theme-text-color)",
+              background: "var(--ink-2)",
+              color: "var(--paper)",
+              border: "1px solid var(--rule)",
               maxHeight: "140px",
+              caretColor: "var(--terra)",
             }}
             disabled={loading}
           />
           <button
-            onClick={sendMessage}
-            disabled={(!input.trim() && !attachment) || loading}
-            className="rounded-full w-10 h-10 flex items-center justify-center text-sm font-bold transition-opacity disabled:opacity-30 flex-shrink-0"
-            style={{
-              background: "var(--tg-theme-button-color)",
-              color: "var(--tg-theme-button-text-color)",
+            onClick={() => {
+              tap("medium");
+              sendMessage();
             }}
+            disabled={!canSend}
+            className="rounded-full w-10 h-10 flex items-center justify-center font-bold transition-all flex-shrink-0 active:scale-95"
+            style={{
+              background: canSend ? "var(--terra)" : "var(--ink-2)",
+              color: canSend ? "var(--ink-0)" : "var(--paper-3)",
+              border: canSend
+                ? "none"
+                : "1px solid var(--rule)",
+              boxShadow: canSend
+                ? "0 8px 20px -8px rgba(199,122,82,0.6)"
+                : "none",
+            }}
+            aria-label="Send"
           >
-            ↑
+            <ArrowUp size={18} strokeWidth={2.4} />
           </button>
         </div>
       </div>
     </div>
+  );
+}
+
+/**
+ * Tiny copy-to-clipboard button for assistant messages. Lives in its own
+ * component so the tick-then-reset effect doesn't need a ref-per-message.
+ */
+function CopyButton({ text }: { text: string }) {
+  const [done, setDone] = useState(false);
+  return (
+    <button
+      onClick={(e) => {
+        e.stopPropagation();
+        navigator.clipboard.writeText(text);
+        setDone(true);
+        setTimeout(() => setDone(false), 1500);
+      }}
+      className="mono text-[9px] px-1.5 py-0.5 rounded inline-flex items-center gap-1 transition-colors"
+      style={{
+        color: "var(--paper-3)",
+        letterSpacing: "0.06em",
+      }}
+      aria-label="Copy message"
+    >
+      {done ? (
+        <>
+          <Check size={10} strokeWidth={2.6} />
+          <span>COPIED</span>
+        </>
+      ) : (
+        <>
+          <Copy size={10} strokeWidth={2} />
+          <span>COPY</span>
+        </>
+      )}
+    </button>
   );
 }

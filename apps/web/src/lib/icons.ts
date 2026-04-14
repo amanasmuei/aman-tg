@@ -44,6 +44,12 @@ import {
   ListChecks,
   BookMarked,
   Users,
+  // Chat / composer
+  Paperclip,
+  ArrowUp,
+  ArrowDown,
+  Check,
+  Copy,
   type LucideIcon,
 } from "lucide-react";
 
@@ -64,6 +70,11 @@ export {
   Store,
   Briefcase,
   Users,
+  Paperclip,
+  ArrowUp,
+  ArrowDown,
+  Check,
+  Copy,
 };
 
 /**
