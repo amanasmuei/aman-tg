@@ -120,8 +120,8 @@ export function Landing() {
           <span className="display text-2xl" style={{ fontVariationSettings: '"opsz" 144, "wght" 460' }}>
             aman
           </span>
-          <span className="text-[10px] mono uppercase tracking-[0.28em]" style={{ color: "var(--ink-hint)" }}>
-            by koolek labs
+          <span className="text-[10px] mono tracking-[0.28em]" style={{ color: "var(--ink-hint)" }}>
+            by KoolekLabs
           </span>
         </a>
         <div className="hidden md:flex items-center gap-8 text-sm">
@@ -620,7 +620,7 @@ export function Landing() {
               className="sweep"
               style={{ color: "var(--ink-soft)" }}
             >
-              Koolek Labs
+              KoolekLabs
             </a>
             <a href={BOT_URL} className="sweep" style={{ color: "var(--ink-soft)" }}>
               Telegram
