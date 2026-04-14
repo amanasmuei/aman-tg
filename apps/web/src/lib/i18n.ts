@@ -13,22 +13,10 @@ const strings: Record<Locale, Record<string, string>> = {
     resetData: "Reset data",
     resetConfirm: "Are you sure you want to reset all your data? This will delete all conversations, tasks, and memories. This cannot be undone.",
 
-    // Home tabs
-    kedai: "Kedai",
-    pakar: "Experts",
+    // Home labels
     search: "Search",
-    searchKedaiPlaceholder: "Find a kedai, dish, or shop",
-    searchPakarPlaceholder: "Find an expert or skill",
-
-    // Empty / CTA
-    noMerchantsToday: "No kedai today",
-    noMerchantsHint: "New shops come online every day — check back later.",
-    tryPakar: "Try experts instead",
     noSearchResults: "No matches",
     noSearchHint: "Try a different keyword.",
-
-    // Home
-    continueConversation: "Continue a conversation",
 
     // Agent grid
     all: "All",
@@ -164,17 +152,9 @@ const strings: Record<Locale, Record<string, string>> = {
     menu: "Menu",
     resetData: "Reset data",
     resetConfirm: "Anda pasti nak reset semua data? Ini akan padam semua perbualan, task, dan memori. Tak boleh undo.",
-    kedai: "Kedai",
-    pakar: "Pakar",
     search: "Cari",
-    searchKedaiPlaceholder: "Cari kedai, makanan, atau bisnes",
-    searchPakarPlaceholder: "Cari pakar atau kemahiran",
-    noMerchantsToday: "Belum ada kedai hari ni",
-    noMerchantsHint: "Kedai baru sentiasa ditambah — check balik nanti.",
-    tryPakar: "Cuba Pakar sementara",
     noSearchResults: "Takde padanan",
     noSearchHint: "Cuba kata kunci lain.",
-    continueConversation: "Sambung perbualan",
     all: "Semua",
     productivity: "Produktiviti",
     coding: "Pengekodan",
@@ -294,17 +274,9 @@ const strings: Record<Locale, Record<string, string>> = {
     menu: "Menu",
     resetData: "Reset data",
     resetConfirm: "Yakin mau reset semua data? Ini akan menghapus semua percakapan, task, dan memori. Tidak bisa di-undo.",
-    kedai: "Kedai",
-    pakar: "Pakar",
     search: "Cari",
-    searchKedaiPlaceholder: "Cari kedai, makanan, atau toko",
-    searchPakarPlaceholder: "Cari pakar atau skill",
-    noMerchantsToday: "Belum ada kedai hari ini",
-    noMerchantsHint: "Toko baru datang setiap hari — cek lagi nanti.",
-    tryPakar: "Coba Pakar dulu",
     noSearchResults: "Tidak ada hasil",
     noSearchHint: "Coba kata kunci lain.",
-    continueConversation: "Lanjutkan percakapan",
     all: "Semua",
     productivity: "Produktivitas",
     coding: "Koding",
