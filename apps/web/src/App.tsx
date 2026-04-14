@@ -17,6 +17,7 @@ import {
   filterMerchantsByQuery,
   type SearchableMerchant,
 } from "./lib/searchFilters";
+import { parseStartParam } from "./lib/startParam";
 import { AGENTS } from "@aman-tg/shared";
 import type { Agent } from "@aman-tg/shared";
 import { Gift, ChevronRight } from "./lib/icons";
@@ -56,6 +57,13 @@ export function App() {
   const [merchants, setMerchants] = useState<Merchant[]>([]);
   const [inviteCopied, setInviteCopied] = useState(false);
 
+  // Deep-link intent (from Telegram's startapp param). Parsed once at mount;
+  // a subsequent effect consumes it when the data it needs is available.
+  const [pendingDeepLink, setPendingDeepLink] = useState(() => {
+    const raw = window.Telegram?.WebApp?.initDataUnsafe?.start_param;
+    return parseStartParam(raw);
+  });
+
   const jiranMerchantCount = merchants.length;
 
   useEffect(() => {
@@ -87,6 +95,39 @@ export function App() {
       .catch(() => {});
     return () => ac.abort();
   }, []);
+
+  // Consume deep-link intent once the data it needs is available.
+  // Stays pending while onboarding shows — first-run always wins over deep
+  // links (they apply to returning users opening share URLs).
+  useEffect(() => {
+    if (!pendingDeepLink || showOnboarding || !telegramId) return;
+
+    if (pendingDeepLink.kind === "ref") {
+      setPendingDeepLink(null);
+      return;
+    }
+
+    if (pendingDeepLink.kind === "agent") {
+      const agent = AGENTS.find((a) => a.id === pendingDeepLink.id);
+      if (agent) setStack({ kind: "detail", agent });
+      setPendingDeepLink(null);
+      return;
+    }
+
+    if (pendingDeepLink.kind === "kedai") {
+      if (merchants.length === 0) return; // wait for merchant list
+      const m = merchants.find((x) => x.id === pendingDeepLink.id);
+      const jiran = AGENTS.find((a) => a.id === "jiran");
+      if (m && jiran) {
+        setStack({
+          kind: "chat",
+          agent: jiran,
+          merchant: { id: m.id, name: m.name },
+        });
+      }
+      setPendingDeepLink(null);
+    }
+  }, [pendingDeepLink, showOnboarding, telegramId, merchants]);
 
   const openDetail = (agent: Agent) => {
     tap("medium");
