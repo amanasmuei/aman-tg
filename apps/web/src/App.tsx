@@ -9,11 +9,26 @@ import { Onboarding } from "./components/Onboarding";
 import { SearchBar } from "./components/SearchBar";
 import { BottomNav, type Tab } from "./components/BottomNav";
 import { ResumeStrip } from "./components/ResumeStrip";
+import { KedaiCard } from "./components/KedaiCard";
 import { detectLocale, t } from "./lib/i18n";
 import { useTelegramId } from "./lib/useTelegramId";
+import {
+  filterMerchantsByQuery,
+  type SearchableMerchant,
+} from "./lib/searchFilters";
 import { AGENTS } from "@aman-tg/shared";
 import type { Agent } from "@aman-tg/shared";
 import { Gift, ChevronRight } from "./lib/icons";
+
+interface Merchant extends SearchableMerchant {
+  type: "home_food" | "kedai_makan" | string;
+  address: string;
+  operating_hours: string;
+  notes: string;
+  price_min: number | null;
+  price_max: number | null;
+  item_count: number;
+}
 
 type Stack =
   | { kind: "none" }
@@ -37,10 +52,10 @@ export function App() {
   const [userPlan, setUserPlan] = useState("free");
   const [planExpiresAt, setPlanExpiresAt] = useState<number | null>(null);
   const [showOnboarding, setShowOnboarding] = useState(false);
-  const [jiranMerchantCount, setJiranMerchantCount] = useState<number | null>(
-    null,
-  );
+  const [merchants, setMerchants] = useState<Merchant[]>([]);
   const [inviteCopied, setInviteCopied] = useState(false);
+
+  const jiranMerchantCount = merchants.length;
 
   useEffect(() => {
     if (!telegramId) return;
@@ -62,12 +77,12 @@ export function App() {
       });
   }, [telegramId]);
 
-  // Jiran merchant count — drives the pill on Jiran's agent card.
+  // Fetch merchants once — drives both the Jiran-card pill and unified search.
   useEffect(() => {
     const ac = new AbortController();
     fetch("/api/merchants", { signal: ac.signal })
       .then((r) => (r.ok ? r.json() : { merchants: [] }))
-      .then((data) => setJiranMerchantCount((data.merchants ?? []).length))
+      .then((data) => setMerchants(data.merchants ?? []))
       .catch(() => {});
     return () => ac.abort();
   }, []);
@@ -218,8 +233,35 @@ export function App() {
             onSelect={openDetail}
             userPlan={userPlan}
             searchQuery={search}
-            jiranMerchantCount={jiranMerchantCount ?? undefined}
+            jiranMerchantCount={jiranMerchantCount || undefined}
           />
+
+          {/* Unified search: shop matches via Jiran. Renders only when the
+              query has actual merchant hits, so a quiet search stays quiet. */}
+          {search.trim().length > 0 &&
+            (() => {
+              const hits = filterMerchantsByQuery(merchants, search);
+              if (hits.length === 0) return null;
+              return (
+                <div className="px-4 mt-2 mb-6">
+                  <div
+                    className="text-[11px] font-semibold tracking-wider uppercase mb-2"
+                    style={{ color: "var(--tg-theme-hint-color)" }}
+                  >
+                    {t("searchResultsShops")}
+                  </div>
+                  <div className="space-y-3">
+                    {hits.map((m) => (
+                      <KedaiCard
+                        key={m.id}
+                        merchant={m}
+                        onTap={() => handleSelectMerchant(m.id, m.name)}
+                      />
+                    ))}
+                  </div>
+                </div>
+              );
+            })()}
         </>
       )}
 
