@@ -9,9 +9,15 @@ interface Props {
   onSelect: (agent: Agent) => void;
   userPlan?: string;
   searchQuery?: string;
+  jiranMerchantCount?: number;
 }
 
-export function AgentGrid({ onSelect, userPlan, searchQuery = "" }: Props) {
+export function AgentGrid({
+  onSelect,
+  userPlan,
+  searchQuery = "",
+  jiranMerchantCount,
+}: Props) {
   const [activeCategory, setActiveCategory] = useState("all");
   const [animating, setAnimating] = useState(false);
 
@@ -129,6 +135,7 @@ export function AgentGrid({ onSelect, userPlan, searchQuery = "" }: Props) {
               agent={agent}
               onSelect={onSelect}
               userPlan={userPlan}
+              jiranMerchantCount={jiranMerchantCount}
             />
           ))}
         </div>

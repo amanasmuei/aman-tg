@@ -1,10 +1,13 @@
 import type { Agent } from "@aman-tg/shared";
 import { getAgentIcon, getAccent, Lock, Star } from "../lib/icons";
+import { t } from "../lib/i18n";
 
 interface Props {
   agent: Agent;
   onSelect: (agent: Agent) => void;
   userPlan?: string;
+  /** Jiran-only: shows an "N kedai" pill signalling inline merchant directory. */
+  jiranMerchantCount?: number;
 }
 
 /**
@@ -15,10 +18,19 @@ interface Props {
  * is the tap target; the share affordance lives in the detail page to
  * keep the grid clean.
  */
-export function AgentCard({ agent, onSelect, userPlan = "free" }: Props) {
+export function AgentCard({
+  agent,
+  onSelect,
+  userPlan = "free",
+  jiranMerchantCount,
+}: Props) {
   const locked = agent.premium && userPlan === "free";
   const Icon = getAgentIcon(agent.id);
   const accent = getAccent(agent.category);
+  const showJiranPill =
+    agent.id === "jiran" &&
+    typeof jiranMerchantCount === "number" &&
+    jiranMerchantCount > 0;
 
   return (
     <button
@@ -29,6 +41,19 @@ export function AgentCard({ agent, onSelect, userPlan = "free" }: Props) {
         opacity: locked ? 0.72 : 1,
       }}
     >
+      {showJiranPill && (
+        <span
+          className="absolute top-2 right-2 text-[10px] font-semibold px-2 py-0.5 rounded-full"
+          style={{
+            background:
+              "color-mix(in srgb, var(--tg-theme-button-color) 85%, transparent)",
+            color: "var(--tg-theme-button-text-color)",
+          }}
+        >
+          {t("agentCardJiranPill", { n: jiranMerchantCount })}
+        </span>
+      )}
+
       {/* Icon tile */}
       <div
         className="w-11 h-11 rounded-xl flex items-center justify-center mb-3"

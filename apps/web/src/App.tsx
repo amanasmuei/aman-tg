@@ -6,22 +6,13 @@ import { AgentDetail } from "./components/AgentDetail";
 import { Header } from "./components/Header";
 import { Landing } from "./components/Landing";
 import { Onboarding } from "./components/Onboarding";
-import { KedaiList } from "./components/KedaiList";
 import { SearchBar } from "./components/SearchBar";
 import { BottomNav, type Tab } from "./components/BottomNav";
 import { detectLocale, t } from "./lib/i18n";
 import { useTelegramId } from "./lib/useTelegramId";
 import { AGENTS } from "@aman-tg/shared";
 import type { Agent } from "@aman-tg/shared";
-import {
-  Store,
-  Briefcase,
-  MessageCircle,
-  Gift,
-  ChevronRight,
-} from "./lib/icons";
-
-type HomeTab = "kedai" | "pakar";
+import { MessageCircle, Gift, ChevronRight } from "./lib/icons";
 
 type Stack =
   | { kind: "none" }
@@ -45,13 +36,14 @@ export function App() {
   const [tab, setTab] = useState<Tab>("teman");
   const [stack, setStack] = useState<Stack>({ kind: "none" });
 
-  // Teman-only UI state (will shrink in later tasks)
-  const [homeTab, setHomeTab] = useState<HomeTab>("kedai");
   const [search, setSearch] = useState("");
   const [userPlan, setUserPlan] = useState("free");
   const [planExpiresAt, setPlanExpiresAt] = useState<number | null>(null);
   const [showOnboarding, setShowOnboarding] = useState(false);
   const [hasConversations, setHasConversations] = useState(false);
+  const [jiranMerchantCount, setJiranMerchantCount] = useState<number | null>(
+    null,
+  );
   const [inviteCopied, setInviteCopied] = useState(false);
 
   useEffect(() => {
@@ -92,13 +84,17 @@ export function App() {
       });
   }, [telegramId]);
 
-  // Reset search when switching tabs — search semantics differ per tab
+  // Jiran merchant count — drives the pill on Jiran's agent card.
   useEffect(() => {
-    setSearch("");
-  }, [homeTab]);
+    const ac = new AbortController();
+    fetch("/api/merchants", { signal: ac.signal })
+      .then((r) => (r.ok ? r.json() : { merchants: [] }))
+      .then((data) => setJiranMerchantCount((data.merchants ?? []).length))
+      .catch(() => {});
+    return () => ac.abort();
+  }, []);
 
-  const openDetail = (agent: Agent) =>
-    setStack({ kind: "detail", agent });
+  const openDetail = (agent: Agent) => setStack({ kind: "detail", agent });
 
   const openChat = (
     agent: Agent,
@@ -140,7 +136,6 @@ export function App() {
   if (showOnboarding)
     return <Onboarding onComplete={handleOnboardingComplete} />;
 
-  // Stack views take the whole screen — bottom nav hidden.
   if (stack.kind === "chat") {
     return (
       <ChatView
@@ -164,11 +159,6 @@ export function App() {
     );
   }
 
-  const searchPlaceholder =
-    homeTab === "kedai"
-      ? t("searchKedaiPlaceholder")
-      : t("searchPakarPlaceholder");
-
   return (
     <div
       className="with-bottom-nav-gutter"
@@ -181,69 +171,10 @@ export function App() {
           <SearchBar
             value={search}
             onChange={setSearch}
-            placeholder={searchPlaceholder}
+            placeholder={t("searchUnifiedPlaceholder")}
           />
 
-          {/* Tab segment: Kedai | Pakar — removed in Task 6 */}
-          <div className="px-4 mb-3">
-            <div
-              className="grid grid-cols-2 gap-1 p-1 rounded-2xl"
-              style={{ background: "var(--tg-theme-secondary-bg-color)" }}
-            >
-              <button
-                onClick={() => setHomeTab("kedai")}
-                className="py-2 rounded-xl text-sm font-semibold flex items-center justify-center gap-2 transition-all"
-                style={{
-                  background:
-                    homeTab === "kedai"
-                      ? "var(--tg-theme-bg-color)"
-                      : "transparent",
-                  color:
-                    homeTab === "kedai"
-                      ? "var(--tg-theme-text-color)"
-                      : "var(--tg-theme-hint-color)",
-                  boxShadow:
-                    homeTab === "kedai"
-                      ? "0 2px 6px rgba(0,0,0,0.25)"
-                      : "none",
-                }}
-              >
-                <Store size={16} strokeWidth={2.2} />
-                {t("kedai")}
-              </button>
-              <button
-                onClick={() => setHomeTab("pakar")}
-                className="py-2 rounded-xl text-sm font-semibold flex items-center justify-center gap-2 transition-all"
-                style={{
-                  background:
-                    homeTab === "pakar"
-                      ? "var(--tg-theme-bg-color)"
-                      : "transparent",
-                  color:
-                    homeTab === "pakar"
-                      ? "var(--tg-theme-text-color)"
-                      : "var(--tg-theme-hint-color)",
-                  boxShadow:
-                    homeTab === "pakar"
-                      ? "0 2px 6px rgba(0,0,0,0.25)"
-                      : "none",
-                }}
-              >
-                <Briefcase size={16} strokeWidth={2.2} />
-                {t("pakar")}
-              </button>
-            </div>
-          </div>
-
-          {/*
-           * Invite banner — shown to users who can actually benefit.
-           *
-           * Visibility matrix (matches apps/api computeReferralReward):
-           *   - free               → shown with "Both get 3 days Pro free"
-           *   - expiring pro       → shown with "Extend your Pro" copy
-           *   - permanent pro      → hidden (nothing to extend)
-           *   - team               → hidden (separate business logic)
-           */}
+          {/* Invite banner — free or expiring-pro only */}
           {(() => {
             const isFree = userPlan === "free";
             const isExpiringPro =
@@ -303,20 +234,12 @@ export function App() {
             );
           })()}
 
-          {/* Content */}
-          {homeTab === "kedai" ? (
-            <KedaiList
-              onSelectMerchant={handleSelectMerchant}
-              onSwitchToPakar={() => setHomeTab("pakar")}
-              searchQuery={search}
-            />
-          ) : (
-            <AgentGrid
-              onSelect={openDetail}
-              userPlan={userPlan}
-              searchQuery={search}
-            />
-          )}
+          <AgentGrid
+            onSelect={openDetail}
+            userPlan={userPlan}
+            searchQuery={search}
+            jiranMerchantCount={jiranMerchantCount ?? undefined}
+          />
 
           {/* Floating "Continue a conversation" chip — removed in Task 7 */}
           {hasConversations && (
@@ -324,8 +247,7 @@ export function App() {
               onClick={() => setTab("sembang")}
               className="fixed left-1/2 -translate-x-1/2 z-40 rounded-full px-5 py-3 flex items-center gap-2 text-sm font-semibold transition-transform active:scale-95 fade-in"
               style={{
-                bottom:
-                  "calc(env(safe-area-inset-bottom, 0px) + 72px)",
+                bottom: "calc(env(safe-area-inset-bottom, 0px) + 72px)",
                 background: "var(--tg-theme-button-color)",
                 color: "var(--tg-theme-button-text-color)",
                 boxShadow:
