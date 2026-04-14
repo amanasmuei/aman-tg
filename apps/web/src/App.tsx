@@ -8,11 +8,12 @@ import { Landing } from "./components/Landing";
 import { Onboarding } from "./components/Onboarding";
 import { SearchBar } from "./components/SearchBar";
 import { BottomNav, type Tab } from "./components/BottomNav";
+import { ResumeStrip } from "./components/ResumeStrip";
 import { detectLocale, t } from "./lib/i18n";
 import { useTelegramId } from "./lib/useTelegramId";
 import { AGENTS } from "@aman-tg/shared";
 import type { Agent } from "@aman-tg/shared";
-import { MessageCircle, Gift, ChevronRight } from "./lib/icons";
+import { Gift, ChevronRight } from "./lib/icons";
 
 type Stack =
   | { kind: "none" }
@@ -23,10 +24,6 @@ type Stack =
       conversationId?: string;
       merchant?: { id: string; name: string };
     };
-
-interface HasConversationsResult {
-  any: boolean;
-}
 
 export function App() {
   detectLocale();
@@ -40,7 +37,6 @@ export function App() {
   const [userPlan, setUserPlan] = useState("free");
   const [planExpiresAt, setPlanExpiresAt] = useState<number | null>(null);
   const [showOnboarding, setShowOnboarding] = useState(false);
-  const [hasConversations, setHasConversations] = useState(false);
   const [jiranMerchantCount, setJiranMerchantCount] = useState<number | null>(
     null,
   );
@@ -63,24 +59,6 @@ export function App() {
       })
       .catch(() => {
         setShowOnboarding(true);
-      });
-
-    fetch(`/api/conversations?telegramId=${telegramId}&limit=1`)
-      .then((res) => (res.ok ? res.json() : { conversations: [] }))
-      .then((data: { conversations?: unknown[] } | HasConversationsResult) => {
-        if ("any" in data) {
-          setHasConversations(data.any);
-        } else if (
-          data &&
-          Array.isArray((data as { conversations?: unknown[] }).conversations)
-        ) {
-          setHasConversations(
-            (data as { conversations: unknown[] }).conversations.length > 0,
-          );
-        }
-      })
-      .catch(() => {
-        /* chip stays hidden on error */
       });
   }, [telegramId]);
 
@@ -234,30 +212,14 @@ export function App() {
             );
           })()}
 
+          <ResumeStrip onSelect={handleSelectConversation} />
+
           <AgentGrid
             onSelect={openDetail}
             userPlan={userPlan}
             searchQuery={search}
             jiranMerchantCount={jiranMerchantCount ?? undefined}
           />
-
-          {/* Floating "Continue a conversation" chip — removed in Task 7 */}
-          {hasConversations && (
-            <button
-              onClick={() => setTab("sembang")}
-              className="fixed left-1/2 -translate-x-1/2 z-40 rounded-full px-5 py-3 flex items-center gap-2 text-sm font-semibold transition-transform active:scale-95 fade-in"
-              style={{
-                bottom: "calc(env(safe-area-inset-bottom, 0px) + 72px)",
-                background: "var(--tg-theme-button-color)",
-                color: "var(--tg-theme-button-text-color)",
-                boxShadow:
-                  "0 10px 30px -4px rgba(0,0,0,0.6), 0 0 0 1px rgba(255,255,255,0.08)",
-              }}
-            >
-              <MessageCircle size={16} strokeWidth={2.2} />
-              {t("continueConversation")}
-            </button>
-          )}
         </>
       )}
 
