@@ -1,5 +1,5 @@
 import "dotenv/config";
-import { Bot, InlineKeyboard, Keyboard } from "grammy";
+import { Bot, InlineKeyboard } from "grammy";
 import { AGENTS } from "@aman-tg/shared";
 import { sendDailyNotifications } from "./notifications.js";
 
@@ -106,13 +106,9 @@ async function sendOrderNotification(
   }
 }
 
-// ── Persistent reply keyboard (always visible at bottom) ──
-const mainKeyboard = new Keyboard()
-  .text("🤖 Switch Agent").text("⭐ Go Pro")
-  .row()
-  .webApp("📱 Open Mini App", miniAppUrl)
-  .resized()    // fit to content
-  .persistent(); // always visible
+// Clear any cached persistent keyboard on user devices; chat-menu button
+// next to the input + /commands menu are the canonical entry points.
+const removeKeyboard = { remove_keyboard: true as const };
 
 // ── Set bot commands menu on startup ──
 bot.api.setMyCommands([
@@ -165,8 +161,8 @@ bot.command("start", async (ctx) => {
             `Both of you get *${data.rewardDays} days Pro* free!\n\n` +
             `✅ Unlimited messages\n` +
             `✅ All premium agents unlocked\n\n` +
-            `Tap the buttons below to start:`,
-            { parse_mode: "Markdown", reply_markup: mainKeyboard },
+            `Send me a message to start chatting, or use /agent to pick an agent.`,
+            { parse_mode: "Markdown", reply_markup: removeKeyboard },
           );
           return;
         }
@@ -183,7 +179,7 @@ bot.command("start", async (ctx) => {
       userAgents.set(user.id, agentId);
       await ctx.reply(
         `${agent.icon} *${agent.name}* activated!\n\n_${agent.description}_\n\nSend me a message to start chatting.`,
-        { parse_mode: "Markdown", reply_markup: mainKeyboard },
+        { parse_mode: "Markdown", reply_markup: removeKeyboard },
       );
       return;
     }
@@ -192,10 +188,10 @@ bot.command("start", async (ctx) => {
   await ctx.reply(
     `Assalamualaikum ${name}! 👋\n\n` +
     `Welcome to *aman* — your AI companion with *13 agents*.\n\n` +
-    `Tap *📱 Open Mini App* below to start chatting!\n\n` +
-    `🤖 *Switch Agent* to pick your agent\n` +
-    `⭐ *Go Pro* for unlimited messages + premium agents`,
-    { parse_mode: "Markdown", reply_markup: mainKeyboard },
+    `Just send me a message to start chatting!\n\n` +
+    `/agent — pick your agent\n` +
+    `/pro — unlock unlimited messages + premium agents`,
+    { parse_mode: "Markdown", reply_markup: removeKeyboard },
   );
 });
 
