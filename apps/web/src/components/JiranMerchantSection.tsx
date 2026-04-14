@@ -63,16 +63,11 @@ export function JiranMerchantSection({ onSelectMerchant }: Props) {
   return (
     <div className="px-4 pb-6">
       <div className="flex items-baseline justify-between mb-3">
-        <h2
-          className="text-xs font-semibold uppercase tracking-wider"
-          style={{ color: "var(--tg-theme-hint-color)" }}
-        >
-          {t("jiranKedaiHeading")}
-        </h2>
+        <h2 className="kicker-night">{t("jiranKedaiHeading")}</h2>
         {!loading && !error && merchants.length > 0 && (
           <span
-            className="text-xs"
-            style={{ color: "var(--tg-theme-hint-color)" }}
+            className="mono text-[10px]"
+            style={{ color: "var(--paper-3)", letterSpacing: "0.04em" }}
           >
             {t("jiranKedaiCount", { n: merchants.length })}
           </span>
@@ -86,14 +81,11 @@ export function JiranMerchantSection({ onSelectMerchant }: Props) {
             <button
               key={c.id}
               onClick={() => setFilter(c.id)}
-              className="flex-shrink-0 px-3.5 py-1.5 rounded-full text-sm font-medium transition-all"
+              className="flex-shrink-0 px-3.5 py-1.5 rounded-full text-sm font-medium transition-all duration-200"
               style={{
-                background: active
-                  ? "var(--tg-theme-button-color)"
-                  : "var(--tg-theme-secondary-bg-color)",
-                color: active
-                  ? "var(--tg-theme-button-text-color)"
-                  : "var(--tg-theme-text-color)",
+                background: active ? "var(--terra)" : "var(--ink-2)",
+                color: active ? "var(--ink-0)" : "var(--paper-2)",
+                border: `1px solid ${active ? "var(--terra)" : "var(--rule)"}`,
               }}
             >
               {c.label}
@@ -108,7 +100,7 @@ export function JiranMerchantSection({ onSelectMerchant }: Props) {
             <div
               key={i}
               className="h-24 rounded-2xl animate-pulse"
-              style={{ background: "var(--tg-theme-secondary-bg-color)" }}
+              style={{ background: "var(--ink-2)" }}
             />
           ))}
         </div>
@@ -116,7 +108,7 @@ export function JiranMerchantSection({ onSelectMerchant }: Props) {
       {error && (
         <p
           className="text-sm text-center py-6"
-          style={{ color: "var(--tg-theme-hint-color)" }}
+          style={{ color: "var(--paper-3)" }}
         >
           {t("somethingWrong")}
         </p>
@@ -125,18 +117,15 @@ export function JiranMerchantSection({ onSelectMerchant }: Props) {
         <div className="text-center py-6">
           <div
             className="w-14 h-14 rounded-2xl flex items-center justify-center mx-auto mb-3"
-            style={{ background: "var(--tg-theme-secondary-bg-color)" }}
+            style={{ background: "var(--ink-2)" }}
           >
             <Store
               size={22}
-              strokeWidth={1.8}
-              style={{ color: "var(--tg-theme-hint-color)" }}
+              strokeWidth={1.6}
+              style={{ color: "var(--paper-3)" }}
             />
           </div>
-          <p
-            className="text-sm"
-            style={{ color: "var(--tg-theme-hint-color)" }}
-          >
+          <p className="text-sm" style={{ color: "var(--paper-3)" }}>
             {t("jiranKedaiEmpty")}
           </p>
         </div>
