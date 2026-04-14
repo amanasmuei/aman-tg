@@ -1,50 +1,65 @@
 import { useState, useEffect } from "react";
 import { AgentGrid } from "./components/AgentGrid";
 import { ChatView } from "./components/ChatView";
-import { ConversationList } from "./components/ConversationList";
+import { Sembang } from "./components/Sembang";
 import { AgentDetail } from "./components/AgentDetail";
 import { Header } from "./components/Header";
 import { Landing } from "./components/Landing";
 import { Onboarding } from "./components/Onboarding";
-import { KedaiList } from "./components/KedaiList";
 import { SearchBar } from "./components/SearchBar";
+import { BottomNav, type Tab } from "./components/BottomNav";
+import { ResumeStrip } from "./components/ResumeStrip";
+import { KedaiCard } from "./components/KedaiCard";
 import { detectLocale, t } from "./lib/i18n";
+import { useTelegramId } from "./lib/useTelegramId";
+import {
+  filterMerchantsByQuery,
+  type SearchableMerchant,
+} from "./lib/searchFilters";
 import { AGENTS } from "@aman-tg/shared";
 import type { Agent } from "@aman-tg/shared";
-import { Store, Briefcase, MessageCircle, Gift, ChevronRight } from "./lib/icons";
+import { Gift, ChevronRight } from "./lib/icons";
 
-type Page = "home" | "chat" | "detail" | "history";
-type HomeTab = "kedai" | "pakar";
-
-interface HasConversationsResult {
-  any: boolean;
+interface Merchant extends SearchableMerchant {
+  type: "home_food" | "kedai_makan" | string;
+  address: string;
+  operating_hours: string;
+  notes: string;
+  price_min: number | null;
+  price_max: number | null;
+  item_count: number;
 }
+
+type Stack =
+  | { kind: "none" }
+  | { kind: "detail"; agent: Agent }
+  | {
+      kind: "chat";
+      agent: Agent;
+      conversationId?: string;
+      merchant?: { id: string; name: string };
+    };
 
 export function App() {
   detectLocale();
-  const [page, setPage] = useState<Page>("home");
-  const [homeTab, setHomeTab] = useState<HomeTab>("kedai");
+  const telegramId = useTelegramId();
+
+  // Orthogonal routing: persistent bottom-nav tab + a push/pop stack on top.
+  const [tab, setTab] = useState<Tab>("teman");
+  const [stack, setStack] = useState<Stack>({ kind: "none" });
+
   const [search, setSearch] = useState("");
-  const [selectedAgent, setSelectedAgent] = useState<Agent | null>(null);
-  const [selectedConversationId, setSelectedConversationId] = useState<
-    string | undefined
-  >();
-  const [selectedMerchant, setSelectedMerchant] = useState<{
-    id: string;
-    name: string;
-  } | null>(null);
   const [userPlan, setUserPlan] = useState("free");
   const [planExpiresAt, setPlanExpiresAt] = useState<number | null>(null);
   const [showOnboarding, setShowOnboarding] = useState(false);
-  const [hasConversations, setHasConversations] = useState(false);
+  const [merchants, setMerchants] = useState<Merchant[]>([]);
   const [inviteCopied, setInviteCopied] = useState(false);
 
+  const jiranMerchantCount = merchants.length;
+
   useEffect(() => {
-    const tg = window.Telegram?.WebApp;
-    const telegramId = tg?.initDataUnsafe?.user?.id;
     if (!telegramId) return;
 
-    // Load user — decides onboarding + plan + expiry
     fetch(`/api/users/me?telegramId=${telegramId}`)
       .then((res) => res.json())
       .then((data) => {
@@ -60,77 +75,48 @@ export function App() {
       .catch(() => {
         setShowOnboarding(true);
       });
+  }, [telegramId]);
 
-    // Decide whether to show the "Continue a conversation" chip
-    fetch(`/api/conversations?telegramId=${telegramId}&limit=1`)
-      .then((res) => (res.ok ? res.json() : { conversations: [] }))
-      .then((data: { conversations?: unknown[] } | HasConversationsResult) => {
-        if ("any" in data) {
-          setHasConversations(data.any);
-        } else if (
-          data &&
-          Array.isArray((data as { conversations?: unknown[] }).conversations)
-        ) {
-          setHasConversations(
-            (data as { conversations: unknown[] }).conversations.length > 0,
-          );
-        }
-      })
-      .catch(() => {
-        /* chip stays hidden on error */
-      });
+  // Fetch merchants once — drives both the Jiran-card pill and unified search.
+  useEffect(() => {
+    const ac = new AbortController();
+    fetch("/api/merchants", { signal: ac.signal })
+      .then((r) => (r.ok ? r.json() : { merchants: [] }))
+      .then((data) => setMerchants(data.merchants ?? []))
+      .catch(() => {});
+    return () => ac.abort();
   }, []);
 
-  // Reset search when switching tabs — search semantics differ per tab
-  useEffect(() => {
-    setSearch("");
-  }, [homeTab]);
+  const openDetail = (agent: Agent) => setStack({ kind: "detail", agent });
 
-  const handleSelectAgent = (agent: Agent) => {
-    setSelectedAgent(agent);
-    setSelectedConversationId(undefined);
-    setPage("detail");
-  };
+  const openChat = (
+    agent: Agent,
+    conversationId?: string,
+    merchant?: { id: string; name: string },
+  ) => setStack({ kind: "chat", agent, conversationId, merchant });
 
-  const handleStartChat = () => {
-    setSelectedConversationId(undefined);
-    setPage("chat");
-  };
+  const popStack = () => setStack({ kind: "none" });
 
-  const handleSelectConversation = (agentId: string, conversationId: string) => {
+  const handleSelectConversation = (
+    agentId: string,
+    conversationId: string,
+  ) => {
     const agent = AGENTS.find((a) => a.id === agentId);
-    if (agent) {
-      setSelectedAgent(agent);
-      setSelectedConversationId(conversationId);
-      setPage("chat");
-    }
-  };
-
-  const handleBack = () => {
-    setSelectedAgent(null);
-    setSelectedConversationId(undefined);
-    setSelectedMerchant(null);
-    setPage("home");
+    if (agent) openChat(agent, conversationId);
   };
 
   const handleSelectMerchant = (merchantId: string, merchantName: string) => {
     const jiran = AGENTS.find((a) => a.id === "jiran");
     if (!jiran) return;
-    setSelectedMerchant({ id: merchantId, name: merchantName });
-    setSelectedAgent(jiran);
-    setSelectedConversationId(undefined);
-    setPage("chat");
+    openChat(jiran, undefined, { id: merchantId, name: merchantName });
   };
 
   const handleOnboardingComplete = (agent: Agent) => {
     setShowOnboarding(false);
-    setSelectedAgent(agent);
-    setPage("detail");
+    openDetail(agent);
   };
 
   const handleInvite = () => {
-    const tg = window.Telegram?.WebApp;
-    const telegramId = tg?.initDataUnsafe?.user?.id;
     if (!telegramId) return;
     const link = `https://t.me/aman_agent_platform_bot?start=ref_${telegramId}`;
     navigator.clipboard.writeText(link).then(() => {
@@ -139,95 +125,53 @@ export function App() {
     });
   };
 
-  if (!window.Telegram?.WebApp?.initDataUnsafe?.user?.id) {
-    return <Landing />;
-  }
-
-  if (showOnboarding) {
+  if (!telegramId) return <Landing />;
+  if (showOnboarding)
     return <Onboarding onComplete={handleOnboardingComplete} />;
-  }
 
-  const searchPlaceholder =
-    homeTab === "kedai"
-      ? t("searchKedaiPlaceholder")
-      : t("searchPakarPlaceholder");
+  if (stack.kind === "chat") {
+    return (
+      <ChatView
+        agent={stack.agent}
+        onBack={popStack}
+        conversationId={stack.conversationId}
+        initialMerchantId={stack.merchant?.id}
+        initialMerchantName={stack.merchant?.name}
+      />
+    );
+  }
+  if (stack.kind === "detail") {
+    return (
+      <AgentDetail
+        agent={stack.agent}
+        onStartChat={() => openChat(stack.agent)}
+        onBack={popStack}
+        userPlan={userPlan}
+        onSelectMerchant={handleSelectMerchant}
+      />
+    );
+  }
 
   return (
-    <div style={{ minHeight: "100vh", display: "flex", flexDirection: "column" }}>
-      {page === "home" && (
+    <div
+      className="with-bottom-nav-gutter"
+      style={{ minHeight: "100vh", display: "flex", flexDirection: "column" }}
+    >
+      {tab === "teman" && (
         <>
-          <Header />
+          <Header onInvite={handleInvite} planExpiresAt={planExpiresAt} />
 
-          {/* Search */}
           <SearchBar
             value={search}
             onChange={setSearch}
-            placeholder={searchPlaceholder}
+            placeholder={t("searchUnifiedPlaceholder")}
           />
 
-          {/* Tab segment: Kedai | Pakar */}
-          <div className="px-4 mb-3">
-            <div
-              className="grid grid-cols-2 gap-1 p-1 rounded-2xl"
-              style={{ background: "var(--tg-theme-secondary-bg-color)" }}
-            >
-              <button
-                onClick={() => setHomeTab("kedai")}
-                className="py-2 rounded-xl text-sm font-semibold flex items-center justify-center gap-2 transition-all"
-                style={{
-                  background:
-                    homeTab === "kedai"
-                      ? "var(--tg-theme-bg-color)"
-                      : "transparent",
-                  color:
-                    homeTab === "kedai"
-                      ? "var(--tg-theme-text-color)"
-                      : "var(--tg-theme-hint-color)",
-                  boxShadow:
-                    homeTab === "kedai"
-                      ? "0 2px 6px rgba(0,0,0,0.25)"
-                      : "none",
-                }}
-              >
-                <Store size={16} strokeWidth={2.2} />
-                {t("kedai")}
-              </button>
-              <button
-                onClick={() => setHomeTab("pakar")}
-                className="py-2 rounded-xl text-sm font-semibold flex items-center justify-center gap-2 transition-all"
-                style={{
-                  background:
-                    homeTab === "pakar"
-                      ? "var(--tg-theme-bg-color)"
-                      : "transparent",
-                  color:
-                    homeTab === "pakar"
-                      ? "var(--tg-theme-text-color)"
-                      : "var(--tg-theme-hint-color)",
-                  boxShadow:
-                    homeTab === "pakar"
-                      ? "0 2px 6px rgba(0,0,0,0.25)"
-                      : "none",
-                }}
-              >
-                <Briefcase size={16} strokeWidth={2.2} />
-                {t("pakar")}
-              </button>
-            </div>
-          </div>
-
-          {/*
-           * Invite banner — shown to users who can actually benefit.
-           *
-           * Visibility matrix (matches apps/api computeReferralReward):
-           *   - free               → shown with "Both get 3 days Pro free"
-           *   - expiring pro       → shown with "Extend your Pro" copy
-           *   - permanent pro      → hidden (nothing to extend)
-           *   - team               → hidden (separate business logic)
-           */}
+          {/* Invite banner — free or expiring-pro only */}
           {(() => {
             const isFree = userPlan === "free";
-            const isExpiringPro = userPlan === "pro" && planExpiresAt !== null;
+            const isExpiringPro =
+              userPlan === "pro" && planExpiresAt !== null;
             if (!isFree && !isExpiringPro) return null;
 
             const title = inviteCopied
@@ -283,66 +227,52 @@ export function App() {
             );
           })()}
 
-          {/* Content */}
-          {homeTab === "kedai" ? (
-            <KedaiList
-              onSelectMerchant={handleSelectMerchant}
-              onSwitchToPakar={() => setHomeTab("pakar")}
-              searchQuery={search}
-            />
-          ) : (
-            <AgentGrid
-              onSelect={handleSelectAgent}
-              userPlan={userPlan}
-              searchQuery={search}
-            />
-          )}
+          <ResumeStrip onSelect={handleSelectConversation} />
 
-          {/* Floating "Continue a conversation" chip — only if there's history */}
-          {hasConversations && (
-            <button
-              onClick={() => setPage("history")}
-              className="fixed left-1/2 -translate-x-1/2 z-40 rounded-full px-5 py-3 flex items-center gap-2 text-sm font-semibold transition-transform active:scale-95 fade-in"
-              style={{
-                bottom: "calc(env(safe-area-inset-bottom, 0px) + 20px)",
-                background: "var(--tg-theme-button-color)",
-                color: "var(--tg-theme-button-text-color)",
-                boxShadow:
-                  "0 10px 30px -4px rgba(0,0,0,0.6), 0 0 0 1px rgba(255,255,255,0.08)",
-              }}
-            >
-              <MessageCircle size={16} strokeWidth={2.2} />
-              {t("continueConversation")}
-            </button>
-          )}
+          <AgentGrid
+            onSelect={openDetail}
+            userPlan={userPlan}
+            searchQuery={search}
+            jiranMerchantCount={jiranMerchantCount || undefined}
+          />
+
+          {/* Unified search: shop matches via Jiran. Renders only when the
+              query has actual merchant hits, so a quiet search stays quiet. */}
+          {search.trim().length > 0 &&
+            (() => {
+              const hits = filterMerchantsByQuery(merchants, search);
+              if (hits.length === 0) return null;
+              return (
+                <div className="px-4 mt-2 mb-6">
+                  <div
+                    className="text-[11px] font-semibold tracking-wider uppercase mb-2"
+                    style={{ color: "var(--tg-theme-hint-color)" }}
+                  >
+                    {t("searchResultsShops")}
+                  </div>
+                  <div className="space-y-3">
+                    {hits.map((m) => (
+                      <KedaiCard
+                        key={m.id}
+                        merchant={m}
+                        onTap={() => handleSelectMerchant(m.id, m.name)}
+                      />
+                    ))}
+                  </div>
+                </div>
+              );
+            })()}
         </>
       )}
 
-      {page === "chat" && selectedAgent && (
-        <ChatView
-          agent={selectedAgent}
-          onBack={handleBack}
-          conversationId={selectedConversationId}
-          initialMerchantId={selectedMerchant?.id}
-          initialMerchantName={selectedMerchant?.name}
-        />
-      )}
-
-      {page === "detail" && selectedAgent && (
-        <AgentDetail
-          agent={selectedAgent}
-          onStartChat={handleStartChat}
-          onBack={handleBack}
-          userPlan={userPlan}
-        />
-      )}
-
-      {page === "history" && (
-        <ConversationList
+      {tab === "sembang" && (
+        <Sembang
           onSelect={handleSelectConversation}
-          onBack={handleBack}
+          onGoToTeman={() => setTab("teman")}
         />
       )}
+
+      <BottomNav active={tab} onChange={setTab} />
     </div>
   );
 }

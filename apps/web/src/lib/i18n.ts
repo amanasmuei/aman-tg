@@ -13,22 +13,10 @@ const strings: Record<Locale, Record<string, string>> = {
     resetData: "Reset data",
     resetConfirm: "Are you sure you want to reset all your data? This will delete all conversations, tasks, and memories. This cannot be undone.",
 
-    // Home tabs
-    kedai: "Kedai",
-    pakar: "Experts",
+    // Home labels
     search: "Search",
-    searchKedaiPlaceholder: "Find a kedai, dish, or shop",
-    searchPakarPlaceholder: "Find an expert or skill",
-
-    // Empty / CTA
-    noMerchantsToday: "No kedai today",
-    noMerchantsHint: "New shops come online every day — check back later.",
-    tryPakar: "Try experts instead",
     noSearchResults: "No matches",
     noSearchHint: "Try a different keyword.",
-
-    // Home
-    continueConversation: "Continue a conversation",
 
     // Agent grid
     all: "All",
@@ -118,6 +106,40 @@ const strings: Record<Locale, Record<string, string>> = {
     inviteReward: "Both get 3 days Pro free",
     inviteExtendPro: "Extend your Pro",
     inviteExtendProReward: "Invite a friend — get 3 extra days",
+
+    // Bottom nav
+    navTeman: "Companions",
+    navSembang: "Chats",
+
+    // Teman home (new)
+    searchUnifiedPlaceholder: "Search a companion, shop, or dish",
+    resumeStripLabel: "Pick up where you left off",
+    categoryServices: "Services",
+
+    // Sembang (upgraded history)
+    sembangTitle: "Chats",
+    sembangToday: "Today",
+    sembangYesterday: "Yesterday",
+    sembangThisWeek: "This week",
+    sembangOlder: "Older",
+    sembangEmptyTitle: "No chats yet",
+    sembangEmptyHint: "Pick a companion to start your first chat.",
+    sembangEmptyCta: "Go to companions",
+
+    // Jiran merchant panel
+    jiranKedaiHeading: "Shops nearby",
+    jiranKedaiCount: "{{n}} shops",
+    jiranKedaiEmpty: "No shops online right now.",
+
+    // AgentDetail
+    agentExampleTryPrefix: "Try: ",
+
+    // Agent card pill
+    agentCardJiranPill: "{{n}} shops",
+
+    // Search results grouping
+    searchResultsCompanions: "Companions",
+    searchResultsShops: "Shops (via Jiran)",
   },
 
   ms: {
@@ -130,17 +152,9 @@ const strings: Record<Locale, Record<string, string>> = {
     menu: "Menu",
     resetData: "Reset data",
     resetConfirm: "Anda pasti nak reset semua data? Ini akan padam semua perbualan, task, dan memori. Tak boleh undo.",
-    kedai: "Kedai",
-    pakar: "Pakar",
     search: "Cari",
-    searchKedaiPlaceholder: "Cari kedai, makanan, atau bisnes",
-    searchPakarPlaceholder: "Cari pakar atau kemahiran",
-    noMerchantsToday: "Belum ada kedai hari ni",
-    noMerchantsHint: "Kedai baru sentiasa ditambah — check balik nanti.",
-    tryPakar: "Cuba Pakar sementara",
     noSearchResults: "Takde padanan",
     noSearchHint: "Cuba kata kunci lain.",
-    continueConversation: "Sambung perbualan",
     all: "Semua",
     productivity: "Produktiviti",
     coding: "Pengekodan",
@@ -214,6 +228,40 @@ const strings: Record<Locale, Record<string, string>> = {
     inviteReward: "Dapat 3 hari Pro percuma",
     inviteExtendPro: "Sambung Pro anda",
     inviteExtendProReward: "Jemput kawan — dapat 3 hari tambahan",
+
+    // Bottom nav
+    navTeman: "Teman",
+    navSembang: "Sembang",
+
+    // Teman home
+    searchUnifiedPlaceholder: "Cari teman, kedai, atau makanan",
+    resumeStripLabel: "Sambung di tempat anda berhenti",
+    categoryServices: "Servis",
+
+    // Sembang
+    sembangTitle: "Sembang",
+    sembangToday: "Hari ini",
+    sembangYesterday: "Semalam",
+    sembangThisWeek: "Minggu ini",
+    sembangOlder: "Lebih lama",
+    sembangEmptyTitle: "Belum ada perbualan",
+    sembangEmptyHint: "Pilih teman untuk mula perbualan pertama anda.",
+    sembangEmptyCta: "Ke senarai teman",
+
+    // Jiran merchant panel
+    jiranKedaiHeading: "Kedai berhampiran",
+    jiranKedaiCount: "{{n}} kedai",
+    jiranKedaiEmpty: "Belum ada kedai online sekarang.",
+
+    // AgentDetail
+    agentExampleTryPrefix: "Cuba: ",
+
+    // Agent card pill
+    agentCardJiranPill: "{{n}} kedai",
+
+    // Search results grouping
+    searchResultsCompanions: "Teman",
+    searchResultsShops: "Kedai (via Jiran)",
   },
 
   id: {
@@ -226,17 +274,9 @@ const strings: Record<Locale, Record<string, string>> = {
     menu: "Menu",
     resetData: "Reset data",
     resetConfirm: "Yakin mau reset semua data? Ini akan menghapus semua percakapan, task, dan memori. Tidak bisa di-undo.",
-    kedai: "Kedai",
-    pakar: "Pakar",
     search: "Cari",
-    searchKedaiPlaceholder: "Cari kedai, makanan, atau toko",
-    searchPakarPlaceholder: "Cari pakar atau skill",
-    noMerchantsToday: "Belum ada kedai hari ini",
-    noMerchantsHint: "Toko baru datang setiap hari — cek lagi nanti.",
-    tryPakar: "Coba Pakar dulu",
     noSearchResults: "Tidak ada hasil",
     noSearchHint: "Coba kata kunci lain.",
-    continueConversation: "Lanjutkan percakapan",
     all: "Semua",
     productivity: "Produktivitas",
     coding: "Koding",
@@ -310,6 +350,40 @@ const strings: Record<Locale, Record<string, string>> = {
     inviteReward: "Dapat 3 hari Pro gratis",
     inviteExtendPro: "Perpanjang Pro kamu",
     inviteExtendProReward: "Ajak teman — dapat 3 hari tambahan",
+
+    // Bottom nav
+    navTeman: "Teman",
+    navSembang: "Obrolan",
+
+    // Teman home
+    searchUnifiedPlaceholder: "Cari teman, toko, atau makanan",
+    resumeStripLabel: "Lanjutkan dari yang terakhir",
+    categoryServices: "Servis",
+
+    // Sembang
+    sembangTitle: "Obrolan",
+    sembangToday: "Hari ini",
+    sembangYesterday: "Kemarin",
+    sembangThisWeek: "Minggu ini",
+    sembangOlder: "Lebih lama",
+    sembangEmptyTitle: "Belum ada obrolan",
+    sembangEmptyHint: "Pilih teman untuk memulai obrolan pertamamu.",
+    sembangEmptyCta: "Lihat teman",
+
+    // Jiran merchant panel
+    jiranKedaiHeading: "Toko di dekatmu",
+    jiranKedaiCount: "{{n}} toko",
+    jiranKedaiEmpty: "Belum ada toko online saat ini.",
+
+    // AgentDetail
+    agentExampleTryPrefix: "Coba: ",
+
+    // Agent card pill
+    agentCardJiranPill: "{{n}} toko",
+
+    // Search results grouping
+    searchResultsCompanions: "Teman",
+    searchResultsShops: "Toko (via Jiran)",
   },
 };
 
@@ -330,14 +404,29 @@ export function detectLocale(): Locale {
   return currentLocale;
 }
 
-/** Get translated string */
-export function t(key: string): string {
-  return strings[currentLocale]?.[key] || strings.en[key] || key;
+/** Get translated string. Supports {{name}} placeholders. */
+export function t(key: string, params?: Record<string, string | number>): string {
+  const raw = strings[currentLocale]?.[key] || strings.en[key] || key;
+  if (!params) return raw;
+  return raw.replace(/\{\{(\w+)\}\}/g, (_, k) => String(params[k] ?? ""));
 }
 
 /** Get current locale */
 export function getLocale(): Locale {
   return currentLocale;
+}
+
+/** Force the locale directly (used by HeaderMenu's language toggle). */
+export function setLocale(l: Locale): void {
+  currentLocale = l;
+}
+
+/** Cycle en → ms → id → en. Returns the new locale. */
+export function cycleLocale(): Locale {
+  const order: Locale[] = ["en", "ms", "id"];
+  const next = order[(order.indexOf(currentLocale) + 1) % order.length];
+  setLocale(next);
+  return next;
 }
 
 /** Get a time-of-day greeting in the current locale (no name appended). */

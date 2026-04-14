@@ -44,6 +44,14 @@ body {
 .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
 .no-scrollbar::-webkit-scrollbar { display: none; }
 
+/* Bottom-nav + content safe-area awareness */
+.bottom-nav-safe {
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+.with-bottom-nav-gutter {
+  padding-bottom: calc(60px + env(safe-area-inset-bottom, 0px));
+}
+
 /* Utility: soft card shadow */
 .card-soft {
   box-shadow:

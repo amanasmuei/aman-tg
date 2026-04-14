@@ -1,6 +1,7 @@
-import { useState, useEffect, useRef } from "react";
-import { t, greetingByHour } from "../lib/i18n";
-import { MoreHorizontal, RotateCcw } from "../lib/icons";
+import { useState, useEffect } from "react";
+import { t, greetingByHour, cycleLocale } from "../lib/i18n";
+import { MoreHorizontal } from "../lib/icons";
+import { HeaderMenu } from "./HeaderMenu";
 
 interface UsageInfo {
   messagesUsed: number;
@@ -19,12 +20,21 @@ interface TelegramUser {
  * Row 2: personalized greeting by time of day (if we have a first name).
  * Row 3 (conditional): free-tier usage bar, hidden for pro/team users.
  */
-export function Header({ onReset }: { onReset?: () => void } = {}) {
+interface HeaderProps {
+  onReset?: () => void;
+  onInvite?: () => void;
+  planExpiresAt?: number | null;
+}
+
+export function Header({
+  onReset,
+  onInvite,
+  planExpiresAt = null,
+}: HeaderProps = {}) {
   const [usage, setUsage] = useState<UsageInfo | null>(null);
   const [firstName, setFirstName] = useState<string | null>(null);
   const [menuOpen, setMenuOpen] = useState(false);
   const [resetting, setResetting] = useState(false);
-  const menuRef = useRef<HTMLDivElement>(null);
 
   // Load user + usage
   useEffect(() => {
@@ -52,21 +62,7 @@ export function Header({ onReset }: { onReset?: () => void } = {}) {
     return () => controller.abort();
   }, []);
 
-  // Close menu on outside tap
-  useEffect(() => {
-    if (!menuOpen) return;
-    const onClick = (e: Event) => {
-      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
-        setMenuOpen(false);
-      }
-    };
-    document.addEventListener("mousedown", onClick);
-    document.addEventListener("touchstart", onClick);
-    return () => {
-      document.removeEventListener("mousedown", onClick);
-      document.removeEventListener("touchstart", onClick);
-    };
-  }, [menuOpen]);
+  // Outside-click handling lives inside HeaderMenu.
 
   const isLow =
     usage &&
@@ -146,7 +142,7 @@ export function Header({ onReset }: { onReset?: () => void } = {}) {
         <div className="flex-1" />
 
         {/* Overflow menu */}
-        <div ref={menuRef} className="relative">
+        <div className="relative">
           <button
             onClick={() => setMenuOpen((o) => !o)}
             className="w-9 h-9 rounded-full flex items-center justify-center transition-opacity active:opacity-60"
@@ -160,23 +156,17 @@ export function Header({ onReset }: { onReset?: () => void } = {}) {
             />
           </button>
           {menuOpen && (
-            <div
-              className="absolute right-0 mt-2 min-w-[160px] rounded-xl overflow-hidden shadow-xl z-50 fade-in"
-              style={{
-                background: "var(--tg-theme-secondary-bg-color)",
-                border: "1px solid var(--tg-theme-hint-color)",
-                borderColor: "rgba(255,255,255,0.08)",
+            <HeaderMenu
+              plan={usage?.plan ?? "free"}
+              planExpiresAt={planExpiresAt}
+              onReset={handleReset}
+              onInvite={() => onInvite?.()}
+              onToggleLocale={() => {
+                cycleLocale();
+                window.location.reload();
               }}
-            >
-              <button
-                onClick={handleReset}
-                className="w-full text-left px-4 py-3 text-sm flex items-center gap-3 transition-colors hover:opacity-80"
-                style={{ color: "#f85149" }}
-              >
-                <RotateCcw size={16} />
-                <span>{t("resetData")}</span>
-              </button>
-            </div>
+              onClose={() => setMenuOpen(false)}
+            />
           )}
         </div>
       </div>
