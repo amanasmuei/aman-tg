@@ -398,7 +398,7 @@ export function ChatView({ agent, onBack, conversationId, initialMerchantId, ini
   };
 
   return (
-    <div className="flex flex-col h-screen">
+    <div className="flex flex-col h-screen stack-push">
       {/* Header */}
       <div className="flex items-center gap-3 px-4 py-3 border-b"
            style={{ borderColor: "var(--tg-theme-secondary-bg-color)", background: "var(--tg-theme-bg-color)" }}>
