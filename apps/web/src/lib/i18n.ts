@@ -118,6 +118,40 @@ const strings: Record<Locale, Record<string, string>> = {
     inviteReward: "Both get 3 days Pro free",
     inviteExtendPro: "Extend your Pro",
     inviteExtendProReward: "Invite a friend — get 3 extra days",
+
+    // Bottom nav
+    navTeman: "Companions",
+    navSembang: "Chats",
+
+    // Teman home (new)
+    searchUnifiedPlaceholder: "Search a companion, shop, or dish",
+    resumeStripLabel: "Pick up where you left off",
+    categoryServices: "Services",
+
+    // Sembang (upgraded history)
+    sembangTitle: "Chats",
+    sembangToday: "Today",
+    sembangYesterday: "Yesterday",
+    sembangThisWeek: "This week",
+    sembangOlder: "Older",
+    sembangEmptyTitle: "No chats yet",
+    sembangEmptyHint: "Pick a companion to start your first chat.",
+    sembangEmptyCta: "Go to companions",
+
+    // Jiran merchant panel
+    jiranKedaiHeading: "Shops nearby",
+    jiranKedaiCount: "{{n}} shops",
+    jiranKedaiEmpty: "No shops online right now.",
+
+    // AgentDetail
+    agentExampleTryPrefix: "Try: ",
+
+    // Agent card pill
+    agentCardJiranPill: "{{n}} shops",
+
+    // Search results grouping
+    searchResultsCompanions: "Companions",
+    searchResultsShops: "Shops (via Jiran)",
   },
 
   ms: {
@@ -214,6 +248,40 @@ const strings: Record<Locale, Record<string, string>> = {
     inviteReward: "Dapat 3 hari Pro percuma",
     inviteExtendPro: "Sambung Pro anda",
     inviteExtendProReward: "Jemput kawan — dapat 3 hari tambahan",
+
+    // Bottom nav
+    navTeman: "Teman",
+    navSembang: "Sembang",
+
+    // Teman home
+    searchUnifiedPlaceholder: "Cari teman, kedai, atau makanan",
+    resumeStripLabel: "Sambung di tempat anda berhenti",
+    categoryServices: "Servis",
+
+    // Sembang
+    sembangTitle: "Sembang",
+    sembangToday: "Hari ini",
+    sembangYesterday: "Semalam",
+    sembangThisWeek: "Minggu ini",
+    sembangOlder: "Lebih lama",
+    sembangEmptyTitle: "Belum ada perbualan",
+    sembangEmptyHint: "Pilih teman untuk mula perbualan pertama anda.",
+    sembangEmptyCta: "Ke senarai teman",
+
+    // Jiran merchant panel
+    jiranKedaiHeading: "Kedai berhampiran",
+    jiranKedaiCount: "{{n}} kedai",
+    jiranKedaiEmpty: "Belum ada kedai online sekarang.",
+
+    // AgentDetail
+    agentExampleTryPrefix: "Cuba: ",
+
+    // Agent card pill
+    agentCardJiranPill: "{{n}} kedai",
+
+    // Search results grouping
+    searchResultsCompanions: "Teman",
+    searchResultsShops: "Kedai (via Jiran)",
   },
 
   id: {
@@ -310,6 +378,40 @@ const strings: Record<Locale, Record<string, string>> = {
     inviteReward: "Dapat 3 hari Pro gratis",
     inviteExtendPro: "Perpanjang Pro kamu",
     inviteExtendProReward: "Ajak teman — dapat 3 hari tambahan",
+
+    // Bottom nav
+    navTeman: "Teman",
+    navSembang: "Obrolan",
+
+    // Teman home
+    searchUnifiedPlaceholder: "Cari teman, toko, atau makanan",
+    resumeStripLabel: "Lanjutkan dari yang terakhir",
+    categoryServices: "Servis",
+
+    // Sembang
+    sembangTitle: "Obrolan",
+    sembangToday: "Hari ini",
+    sembangYesterday: "Kemarin",
+    sembangThisWeek: "Minggu ini",
+    sembangOlder: "Lebih lama",
+    sembangEmptyTitle: "Belum ada obrolan",
+    sembangEmptyHint: "Pilih teman untuk memulai obrolan pertamamu.",
+    sembangEmptyCta: "Lihat teman",
+
+    // Jiran merchant panel
+    jiranKedaiHeading: "Toko di dekatmu",
+    jiranKedaiCount: "{{n}} toko",
+    jiranKedaiEmpty: "Belum ada toko online saat ini.",
+
+    // AgentDetail
+    agentExampleTryPrefix: "Coba: ",
+
+    // Agent card pill
+    agentCardJiranPill: "{{n}} toko",
+
+    // Search results grouping
+    searchResultsCompanions: "Teman",
+    searchResultsShops: "Toko (via Jiran)",
   },
 };
 
@@ -330,9 +432,11 @@ export function detectLocale(): Locale {
   return currentLocale;
 }
 
-/** Get translated string */
-export function t(key: string): string {
-  return strings[currentLocale]?.[key] || strings.en[key] || key;
+/** Get translated string. Supports {{name}} placeholders. */
+export function t(key: string, params?: Record<string, string | number>): string {
+  const raw = strings[currentLocale]?.[key] || strings.en[key] || key;
+  if (!params) return raw;
+  return raw.replace(/\{\{(\w+)\}\}/g, (_, k) => String(params[k] ?? ""));
 }
 
 /** Get current locale */
