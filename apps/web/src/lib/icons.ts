@@ -47,6 +47,8 @@ import {
   type LucideIcon,
 } from "lucide-react";
 
+export type { LucideIcon } from "lucide-react";
+
 // Re-export commonly-used chrome icons so components only need one import path
 export {
   Search,
@@ -61,6 +63,7 @@ export {
   RotateCcw,
   Store,
   Briefcase,
+  Users,
 };
 
 /**
