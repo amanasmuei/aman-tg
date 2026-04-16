@@ -112,10 +112,12 @@ export function Landing() {
 
   const featured = useMemo(() => AGENTS.slice(0, 12), []);
 
+  const [mobileNavOpen, setMobileNavOpen] = useState(false);
+
   return (
     <div className="landing">
       {/* ======== NAV ======== */}
-      <nav className="relative z-10 max-w-6xl mx-auto px-6 lg:px-10 pt-6 flex items-center justify-between">
+      <nav className="relative z-30 max-w-6xl mx-auto px-6 lg:px-10 pt-6 flex items-center justify-between">
         <a href="#top" className="flex items-center gap-2">
           <span className="display text-2xl" style={{ fontVariationSettings: '"opsz" 144, "wght" 460' }}>
             aman
@@ -124,6 +126,8 @@ export function Landing() {
             by KoolekLabs
           </span>
         </a>
+
+        {/* Desktop nav */}
         <div className="hidden md:flex items-center gap-8 text-sm">
           <a href="#memory" className="sweep" style={{ color: "var(--ink-soft)" }}>
             Memory
@@ -139,13 +143,80 @@ export function Landing() {
             <span aria-hidden>→</span>
           </a>
         </div>
+
+        {/* Mobile hamburger */}
+        <button
+          className="md:hidden flex flex-col gap-[5px] p-2 -mr-2"
+          onClick={() => setMobileNavOpen((v) => !v)}
+          aria-label={mobileNavOpen ? "Close menu" : "Open menu"}
+        >
+          <span
+            className="block w-5 h-[1.5px] transition-transform origin-center"
+            style={{
+              background: "var(--ink)",
+              transform: mobileNavOpen ? "rotate(45deg) translate(2px, 2px)" : "none",
+            }}
+          />
+          <span
+            className="block w-5 h-[1.5px] transition-opacity"
+            style={{
+              background: "var(--ink)",
+              opacity: mobileNavOpen ? 0 : 1,
+            }}
+          />
+          <span
+            className="block w-5 h-[1.5px] transition-transform origin-center"
+            style={{
+              background: "var(--ink)",
+              transform: mobileNavOpen ? "rotate(-45deg) translate(2px, -2px)" : "none",
+            }}
+          />
+        </button>
       </nav>
+
+      {/* Mobile nav drawer */}
+      {mobileNavOpen && (
+        <div
+          className="md:hidden fixed inset-0 z-20"
+          style={{ background: "rgba(27,26,23,0.3)" }}
+          onClick={() => setMobileNavOpen(false)}
+        >
+          <div
+            className="absolute top-0 right-0 w-64 h-full flex flex-col gap-1 pt-20 px-6"
+            style={{ background: "var(--paper)", boxShadow: "-8px 0 30px rgba(27,26,23,0.15)" }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            {[
+              { label: "Memory", href: "#memory" },
+              { label: "Agents", href: "#agents" },
+              { label: "Pricing", href: "#pricing" },
+            ].map((link) => (
+              <a
+                key={link.label}
+                href={link.href}
+                className="block py-3 text-base font-medium"
+                style={{ color: "var(--ink-soft)", borderBottom: "1px solid var(--rule)" }}
+                onClick={() => setMobileNavOpen(false)}
+              >
+                {link.label}
+              </a>
+            ))}
+            <a
+              href={BOT_URL}
+              className="btn-ink text-sm mt-6 text-center justify-center"
+              style={{ padding: "0.8rem 1.2rem" }}
+            >
+              Open in Telegram <span aria-hidden>↗</span>
+            </a>
+          </div>
+        </div>
+      )}
 
       {/* ======== HERO ======== */}
       <section
         ref={heroRef}
         id="top"
-        className="relative max-w-6xl mx-auto px-6 lg:px-10 pt-12 md:pt-20 pb-20 md:pb-28"
+        className="relative max-w-6xl mx-auto px-6 lg:px-10 pt-10 md:pt-20 pb-14 md:pb-28"
       >
         <div className="halo" />
         <div className="relative z-10 grid md:grid-cols-12 gap-10 md:gap-14 items-center">
@@ -295,7 +366,7 @@ export function Landing() {
       <section
         id="memory"
         ref={rememberRef}
-        className="reveal relative max-w-6xl mx-auto px-6 lg:px-10 py-20 md:py-28"
+        className="reveal relative max-w-6xl mx-auto px-6 lg:px-10 py-14 md:py-28"
       >
         <div
           aria-hidden
@@ -341,7 +412,7 @@ export function Landing() {
                 opacity="0.55"
               />
             </svg>
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 relative">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 relative">
               {[
                 {
                   day: "Monday",
@@ -393,7 +464,7 @@ export function Landing() {
       <section
         id="agents"
         ref={agentsRef}
-        className="reveal relative py-20 md:py-28"
+        className="reveal relative py-14 md:py-28"
         style={{ background: "var(--paper-deep)" }}
       >
         <div className="max-w-6xl mx-auto px-6 lg:px-10">
@@ -417,7 +488,7 @@ export function Landing() {
             </p>
           </div>
 
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-5">
+          <div className="grid grid-cols-1 min-[420px]:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-5">
             {featured.map((agent, idx) => (
               <a
                 key={agent.id}
@@ -426,7 +497,7 @@ export function Landing() {
                 style={{
                   background: "var(--card)",
                   border: "1px solid var(--rule)",
-                  minHeight: "170px",
+                  minHeight: "150px",
                   textDecoration: "none",
                   color: "inherit",
                 }}
@@ -501,7 +572,7 @@ export function Landing() {
       <section
         id="pricing"
         ref={pricingRef}
-        className="reveal max-w-6xl mx-auto px-6 lg:px-10 py-20 md:py-28"
+        className="reveal max-w-6xl mx-auto px-6 lg:px-10 py-14 md:py-28"
       >
         <div className="grid md:grid-cols-12 gap-10">
           <div className="md:col-span-4">
@@ -559,7 +630,7 @@ export function Landing() {
       {/* ======== CULTURE / CTA ======== */}
       <section
         ref={footerRef}
-        className="reveal relative py-24 md:py-32"
+        className="reveal relative py-16 md:py-32"
         style={{
           background:
             "radial-gradient(800px 400px at 50% 20%, rgba(47,74,58,0.08), transparent 70%), var(--paper)",
@@ -607,7 +678,7 @@ export function Landing() {
         className="relative border-t text-sm"
         style={{ borderColor: "var(--rule)", color: "var(--ink-hint)" }}
       >
-        <div className="max-w-6xl mx-auto px-6 lg:px-10 py-8 flex flex-wrap items-center justify-between gap-3">
+        <div className="max-w-6xl mx-auto px-6 lg:px-10 py-8 pb-20 md:pb-8 flex flex-col sm:flex-row items-center justify-between gap-4">
           <div className="flex items-center gap-3">
             <span className="display text-lg" style={{ fontVariationSettings: '"opsz" 144, "wght" 460' }}>
               aman
@@ -631,6 +702,23 @@ export function Landing() {
           </div>
         </div>
       </footer>
+
+      {/* ======== STICKY MOBILE CTA ======== */}
+      <div
+        className="md:hidden fixed bottom-0 left-0 right-0 z-40 px-4 pb-4 pt-2"
+        style={{
+          background: "linear-gradient(transparent, var(--paper) 40%)",
+          pointerEvents: "none",
+        }}
+      >
+        <a
+          href={BOT_URL}
+          className="btn-ink w-full text-sm justify-center text-center"
+          style={{ pointerEvents: "auto", padding: "0.85rem 1.2rem" }}
+        >
+          Open in Telegram <span aria-hidden>↗</span>
+        </a>
+      </div>
     </div>
   );
 }
